@@ -1,18 +1,18 @@
--- Insert Akun Login (Admin & Bendahara)
-INSERT INTO users (nama_lengkap, username, email, password_hash, role)
-VALUES
-    ('Staf Admin 1', 'admin1', 'admin@sim.id', '$2b$12$hash_admin_password', 'ADMINISTRASI'),
-    ('Staf Bendahara 1', 'bendahara1', 'bendahara@sim.id', '$2b$12$hash_bendahara_password', 'BENDAHARA');
+-- Reset isi tabel users dan reset urutan ID
+TRUNCATE TABLE users RESTART IDENTITY CASCADE;
 
--- Insert Master Data Petugas Field (Auditor & Dewan Syariah)
-INSERT INTO petugas_field (nama_petugas, kontak, peran)
+-- Insert 1 Admin & 1 Bendahara
+INSERT INTO users (nama_lengkap, username, password_hash, role)
 VALUES
-    ('Dr. Ahmad Auditor', '0811111111', 'AUDITOR'),
-    ('Budi Auditor, S.T.', '0822222222', 'AUDITOR'),
-    ('K.H. Hasan Syariah', '0833333333', 'DEWAN_SYARIAH');
-
--- Query Login Verification
-SELECT id_user, nama_lengkap, username, password_hash, role
-FROM users
-WHERE (username = 'admin1' OR email = 'admin1')
-  AND is_active = TRUE;
+    (
+        'Staf Administrasi',
+        'admin',
+        '$2b$10$EpRnTzVlqHNP0.fKbX23D.BqX3V.v1o7GfVzP7hX1gJ5gZ5vN6aG2', -- Hash password default: admin123
+        'ADMINISTRASI'
+    ),
+    (
+        'Staf Bendahara',
+        'bendahara',
+        '$2b$10$EpRnTzVlqHNP0.fKbX23D.BqX3V.v1o7GfVzP7hX1gJ5gZ5vN6aG2', -- Hash password default: bendahara123
+        'BENDAHARA'
+    );

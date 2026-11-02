@@ -1,5 +1,5 @@
 -- =============================================================================
--- 1. DROP TABEL LAMA (Opsional, gunakan jika ingin reset skema bersih)
+-- 1. DROP TABEL LAMA (Reset Skema Bersih)
 -- =============================================================================
 DROP TABLE IF EXISTS log_arsip_historis CASCADE;
 DROP TABLE IF EXISTS import_log CASCADE;
@@ -23,15 +23,14 @@ CREATE TYPE status_penugasan_enum AS ENUM ('PENDING', 'ASSIGNED', 'REASSIGNED');
 CREATE TYPE status_keuangan_enum AS ENUM ('DRAFT', 'SIAP_VERIFIKASI', 'DITERIMA', 'REVISI');
 
 -- =============================================================================
--- 3. TABEL INDUK UTAMA (HARUS DIJALANKAN PERTAMA)
+-- 3. TABEL INDUK UTAMA
 -- =============================================================================
 
--- A. Tabel Users (Must be created FIRST before referenced by other tables)
+-- A. Tabel Users (Tanpa kolom Email)
 CREATE TABLE users (
     id_user SERIAL PRIMARY KEY,
     nama_lengkap VARCHAR(150) NOT NULL,
     username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role role_login_enum NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -40,7 +39,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- B. Tabel Petugas Field
+-- B. Tabel Petugas Field (Master Nama Auditor & Dewan Syariah - Tanpa Login)
 CREATE TABLE petugas_field (
     id_petugas SERIAL PRIMARY KEY,
     nama_petugas VARCHAR(150) NOT NULL,
@@ -51,18 +50,18 @@ CREATE TABLE petugas_field (
 );
 
 -- =============================================================================
--- 4. TABEL TRANSAKSI & PENUGASAN (Merujuk ke users & petugas_field)
+-- 4. TABEL TRANSAKSI & DATA UTAMA
 -- =============================================================================
 
--- Pelaku Usaha (Merujuk ke users)
+-- Pelaku Usaha (Sesuai Data Pelaku Usaha Excel)
 CREATE TABLE pelaku_usaha (
-    id_daftar VARCHAR(50) PRIMARY KEY,
-    nama_pelaku_usaha VARCHAR(255) NOT NULL,
-    produk TEXT NOT NULL,
-    outlet TEXT NOT NULL,
-    alamat TEXT NOT NULL,
-    jarak NUMERIC(8,2) NOT NULL,
-    kontak VARCHAR(50) NOT NULL,
+    id_daftar VARCHAR(50) PRIMARY KEY,               -- 1. No ID-Daftar
+    nama_pelaku_usaha VARCHAR(255) NOT NULL,        -- 2. Nama Pelaku Usaha
+    jumlah_produk INT DEFAULT 0,                    -- 3. Jumlah Produk
+    jumlah_outlet INT DEFAULT 0,                    -- 4. Jumlah Outlet/Pabrik
+    alamat_outlet TEXT NOT NULL,                    -- 5. Alamat Outlet/Pabrik
+    jarak_dari_pusat_kota NUMERIC(8,2) NOT NULL,    -- 6. Jarak dari Pusat Kota (km)
+    nama_kontak_penyelia VARCHAR(150) NOT NULL,      -- 7. Nama & Kontak Penyelia
     created_by INT REFERENCES users(id_user),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -76,36 +75,37 @@ CREATE TABLE permohonan_audit (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Penugasan (Merujuk ke permohonan_audit & users)
+-- Penugasan (Sesuai Data Internal Excel)
 CREATE TABLE penugasan (
     id_penugasan SERIAL PRIMARY KEY,
     id_permohonan INT REFERENCES permohonan_audit(id_permohonan) ON DELETE CASCADE,
-    jumlah_kebutuhan_auditor INT NOT NULL,
+    kebutuhan_jumlah_auditor INT NOT NULL,          -- 1. Kebutuhan Jumlah Auditor
     status_penugasan status_penugasan_enum DEFAULT 'ASSIGNED',
     assigned_by INT REFERENCES users(id_user),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Detail Penugasan (Merujuk ke penugasan & petugas_field)
+-- Detail Penugasan (Nama Auditor & Dewan Syariah)
 CREATE TABLE detail_penugasan_petugas (
     id_detail SERIAL PRIMARY KEY,
     id_penugasan INT REFERENCES penugasan(id_penugasan) ON DELETE CASCADE,
-    id_petugas INT REFERENCES petugas_field(id_petugas) ON DELETE RESTRICT
+    id_petugas INT REFERENCES petugas_field(id_petugas) ON DELETE RESTRICT  -- 2 & 3. Nama Auditor & Dewan Syariah
 );
 
--- Keuangan Audit (Merujuk ke permohonan_audit & users)
+-- Keuangan Audit (Sesuai Data Keuangan Excel)
 CREATE TABLE keuangan_audit (
     id_keuangan SERIAL PRIMARY KEY,
     id_permohonan INT REFERENCES permohonan_audit(id_permohonan) ON DELETE CASCADE,
-    no_invoice VARCHAR(100) UNIQUE NOT NULL,
-    biaya_transportasi NUMERIC(12,2) DEFAULT 0.00,
-    biaya_uh_penginapan NUMERIC(12,2) DEFAULT 0.00,
-    biaya_operasional_lph NUMERIC(12,2) DEFAULT 0.00,
+    no_invoice VARCHAR(100) UNIQUE NOT NULL,         -- 5. Nomor Invoice Penagihan
+    biaya_transport_talangan NUMERIC(12,2) DEFAULT 0.00,  -- 1. Biaya Transport utk Talangan
+    biaya_uh_penginapan NUMERIC(12,2) DEFAULT 0.00,      -- 2. Biaya UH + Penginapan
+    total_biaya_lph NUMERIC(12,2) DEFAULT 0.00,          -- 3. Total Biaya Perhitungan LPH
+    biaya_input_sistem NUMERIC(12,2) DEFAULT 0.00,       -- 4. Biaya yang Diinput ke Sistem
     penambahan_produk INT DEFAULT 0,
     penambahan_outlet INT DEFAULT 0,
-    biaya_tambahan NUMERIC(12,2) DEFAULT 0.00,
-    total_biaya NUMERIC(12,2) NOT NULL,
+    biaya_tambahan NUMERIC(12,2) DEFAULT 0.00,       -- 6. Biaya Tambahan (Tentative Lapangan)
+    total_biaya_final NUMERIC(12,2) NOT NULL,
     status_keuangan status_keuangan_enum DEFAULT 'DRAFT',
     catatan_revisi TEXT,
     created_by INT REFERENCES users(id_user),
@@ -114,7 +114,7 @@ CREATE TABLE keuangan_audit (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Import Log (Merujuk ke users)
+-- Import Log
 CREATE TABLE import_log (
     id_log SERIAL PRIMARY KEY,
     nama_berkas VARCHAR(255) NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE import_log (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Log Arsip Historis (Merujuk ke users)
+-- Log Arsip Historis
 CREATE TABLE log_arsip_historis (
     id_arsip BIGSERIAL PRIMARY KEY,
     id_user INT REFERENCES users(id_user),
