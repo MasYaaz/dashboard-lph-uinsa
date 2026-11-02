@@ -18,17 +18,18 @@
 		PanelLeft,
 		Shield,
 		ChevronDown,
-		RotateCcwIcon
+		RotateCcwIcon,
+		X
 	} from '@lucide/svelte';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
 	const user = $derived(data.user);
 
-	// State Toggle Sidebar & Profile Menu Dropdown
+	// State Sidebar (secara bawaan terbuka di desktop, tertutup di mobile)
 	let isSidebarOpen = $state(true);
 	let showProfileMenu = $state(false);
 
-	// Mendapatkan 2 inisial nama pengguna (misal: Nadia Putri -> NP)
 	const initials = $derived(
 		user.nama_lengkap
 			? user.nama_lengkap
@@ -40,7 +41,6 @@
 			: 'U'
 	);
 
-	// Formatting Role Display Badge
 	const roleDisplay = $derived(user.role === 'ADMINISTRASI' ? 'Admin LPH' : 'Bendahara LPH');
 
 	interface NavItem {
@@ -64,12 +64,7 @@
 			icon: BuildingComplex,
 			role: ['ADMINISTRASI']
 		},
-		{
-			name: 'Penugasan Tim',
-			href: '/dashboard/penugasan',
-			icon: Users,
-			role: ['ADMINISTRASI']
-		},
+		{ name: 'Penugasan Tim', href: '/dashboard/penugasan', icon: Users, role: ['ADMINISTRASI'] },
 		{
 			name: 'Biaya Audit',
 			href: '/dashboard/keuangan/tagihan',
@@ -94,12 +89,7 @@
 			icon: RotateCcwIcon,
 			role: ['ADMINISTRASI', 'BENDAHARA']
 		},
-		{
-			name: 'Manajemen Akun',
-			href: '/dashboard/petugas',
-			icon: UserCog,
-			role: ['ADMINISTRASI']
-		}
+		{ name: 'Manajemen Akun', href: '/dashboard/petugas', icon: UserCog, role: ['ADMINISTRASI'] }
 	];
 </script>
 
@@ -107,26 +97,47 @@
 	<title>SIM LPH - Sistem Internal</title>
 </svelte:head>
 
-<div class="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-800">
-	<!-- SIDEBAR NAVIGATION CONTAINER WITH COLLAPSIBLE TRANSITION -->
+<div class="relative flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans text-slate-800">
+	<!-- BACKDROP OVERLAY UNTUK LAYAR MOBILE -->
+	{#if isSidebarOpen}
+		<button
+			type="button"
+			aria-label="Tutup Sidebar"
+			onclick={() => (isSidebarOpen = false)}
+			class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-xs transition-opacity lg:hidden"
+		></button>
+	{/if}
+
+	<!-- SIDEBAR DRAWER (COLLAPSIBLE DESKTOP + SLIDE OVER MOBILE) -->
 	<aside
-		class="flex shrink-0 flex-col justify-between overflow-hidden bg-white transition-all duration-300 ease-in-out {isSidebarOpen
-			? 'w-72 border-r border-slate-200/70 p-6 opacity-100'
-			: 'pointer-events-none w-0 border-none p-0 opacity-0'}"
+		class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col justify-between bg-white transition-all duration-300 ease-in-out lg:static lg:z-auto {isSidebarOpen
+			? 'w-72 translate-x-0 border-r border-slate-200/70 p-6 opacity-100'
+			: 'pointer-events-none w-0 -translate-x-full border-none p-0 opacity-0 lg:translate-x-0'}"
 	>
 		<div class="w-60 space-y-6">
-			<!-- 1. Brand Logo Header -->
-			<div class="flex items-center gap-3">
-				<img src={logo} alt="Logo Uinsa" class="h-9" />
-				<div>
-					<h1 class="text-lg leading-tight font-bold tracking-tight text-slate-900">
-						SIM LPH UINSA
-					</h1>
-					<p class="text-xs font-medium text-slate-400">Sistem Internal</p>
+			<!-- BRAND LOGO & HEADER -->
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<img src={logo} alt="Logo Uinsa" class="h-9" />
+					<div>
+						<h1 class="text-lg leading-tight font-bold tracking-tight text-slate-900">
+							SIM LPH UINSA
+						</h1>
+						<p class="text-xs font-medium text-slate-400">Sistem Internal</p>
+					</div>
 				</div>
+
+				<!-- TOMBOL CLOSE SIDEBAR DI MOBILE -->
+				<button
+					type="button"
+					onclick={() => (isSidebarOpen = false)}
+					class="rounded-xl p-1 text-slate-400 hover:bg-slate-100 lg:hidden"
+				>
+					<X class="h-5 w-5" />
+				</button>
 			</div>
 
-			<!-- 2. Menu Utama Items -->
+			<!-- NAVIGATION MENU -->
 			<div class="space-y-2">
 				<div class="px-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
 					Menu Utama
@@ -138,6 +149,10 @@
 							{@const IconComponent = item.icon}
 							<a
 								href={resolve(item.href)}
+								onclick={() => {
+									// Otomatis tutup sidebar di layar mobile setelah klik menu
+									if (window.innerWidth < 1024) isSidebarOpen = false;
+								}}
 								class="flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-semibold transition-all duration-150 {isActive
 									? 'bg-[#D1FAE5] text-[#059669]'
 									: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}"
@@ -162,29 +177,8 @@
 			</div>
 		</div>
 
-		<!-- 3. Sidebar Bottom Section -->
+		<!-- SIDEBAR BOTTOM SECTION -->
 		<div class="w-60 space-y-6 pt-6">
-			<!-- Help Banner Card -->
-			<div class="space-y-3 rounded-2xl border border-blue-100/60 bg-blue-50/60 p-4">
-				<div class="flex items-center gap-2 text-[#2563EB]">
-					<BookOpen class="h-5 w-5" />
-				</div>
-				<div class="space-y-1">
-					<h3 class="text-xs font-bold text-slate-900">Butuh panduan?</h3>
-					<p class="text-[11px] leading-relaxed text-slate-500">
-						Pelajari alur pemeriksaan dan administrasi halal.
-					</p>
-				</div>
-				<a
-					href="#panduan"
-					class="inline-flex items-center gap-1.5 text-xs font-bold text-[#2563EB] hover:underline"
-				>
-					<span>Buka panduan</span>
-					<ExternalLink class="h-3.5 w-3.5" />
-				</a>
-			</div>
-
-			<!-- Footer Internal Version Info -->
 			<div class="space-y-1 border-t border-slate-100 pt-4">
 				<p class="text-xs font-bold text-slate-600">KONSEP INTERNAL • v1.0</p>
 				<p class="text-[11px] text-slate-400">Data ilustratif, bukan data institusi.</p>
@@ -192,54 +186,52 @@
 		</div>
 	</aside>
 
-	<!-- MAIN CONTENT AREA -->
-	<div class="flex min-w-0 flex-1 flex-col">
-		<!-- TOPBAR HEADER -->
+	<!-- MAIN CONTENT CONTAINER -->
+	<div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+		<!-- RESPONSIVE TOPBAR HEADER -->
 		<header
-			class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white px-8"
+			class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white px-4 md:px-8"
 		>
-			<!-- Sisi Kiri: Panel Toggle & Title Breadcrumb -->
-			<div class="flex items-center gap-4">
+			<div class="flex items-center gap-3">
 				<button
 					type="button"
 					onclick={() => (isSidebarOpen = !isSidebarOpen)}
-					class="rounded-xl p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+					class="rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
 					aria-label="Toggle Sidebar"
 				>
 					<PanelLeft class="h-5 w-5" />
 				</button>
-				<span class="text-sm font-medium text-slate-600">
-					Lembaga Pemeriksa Halal / Sistem Manajemen Internal
+				<span class="hidden text-sm font-medium text-slate-600 sm:inline-block">
+					Lembaga Pemeriksa Halal / SIM Internal
 				</span>
 			</div>
 
-			<!-- Sisi Kanan: Badge Role, Notification, Separator & Profile Dropdown -->
-			<div class="flex items-center gap-5">
+			<!-- PROFILE & ROLE BADGE -->
+			<div class="flex items-center gap-3 md:gap-5">
 				<div
-					class="flex items-center gap-2 rounded-full bg-blue-50/80 px-4 py-1.5 text-xs font-semibold text-[#2563EB]"
+					class="hidden items-center gap-2 rounded-full bg-blue-50/80 px-3.5 py-1.5 text-xs font-semibold text-[#2563EB] sm:flex"
 				>
 					<Shield class="h-4 w-4" />
 					<span>{roleDisplay}</span>
 				</div>
-
-				<div class="h-6 w-px bg-slate-200"></div>
+				<div class="hidden h-6 w-px bg-slate-200 sm:block"></div>
 
 				<div class="relative">
 					<button
 						type="button"
 						onclick={() => (showProfileMenu = !showProfileMenu)}
-						class="flex items-center gap-3 text-left focus:outline-none"
+						class="flex items-center gap-2.5 text-left focus:outline-none"
 					>
 						<div
 							class="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100/70 text-xs font-bold text-[#2563EB]"
 						>
 							{initials}
 						</div>
-						<div>
+						<div class="hidden md:block">
 							<p class="text-sm leading-tight font-semibold text-slate-900">{user.nama_lengkap}</p>
 							<p class="text-[11px] font-medium text-slate-400">Akun internal</p>
 						</div>
-						<ChevronDown class="ml-1 h-4 w-4 text-slate-500" />
+						<ChevronDown class="h-4 w-4 text-slate-500" />
 					</button>
 
 					{#if showProfileMenu}
@@ -261,8 +253,8 @@
 			</div>
 		</header>
 
-		<!-- MAIN CONTENT PAGE BODY -->
-		<main class="flex-1 overflow-y-auto p-8">
+		<!-- MAIN CONTENT SCROLLABLE BODY -->
+		<main class="flex-1 overflow-y-auto p-4 md:p-8">
 			{@render children()}
 		</main>
 	</div>
