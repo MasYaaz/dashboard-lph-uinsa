@@ -10,8 +10,6 @@
 		Receipt,
 		BadgeCheck,
 		UserCog,
-		BookOpen,
-		ExternalLink,
 		LogOut,
 		BuildingComplex,
 		CloudUpload,
