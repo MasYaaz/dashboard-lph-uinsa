@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
-import type { PelakuUsaha } from '#lib/types/database.ts';
+import type { PelakuUsaha } from '#lib/types.ts';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();

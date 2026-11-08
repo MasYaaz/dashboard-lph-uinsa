@@ -3,58 +3,29 @@ import { neon } from '@neondatabase/serverless';
 import { DATABASE_URL } from '$app/env/private';
 
 const connectionString = DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hargapas';
-
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.NETLIFY;
 const isNeon = connectionString.includes('neon.tech');
 
 type SqlRowValue = string | number | boolean | null | Date | object;
 type GenericRow = Record<string, SqlRowValue>;
 
-function camelize(str: string): string {
-	return str.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
-}
-
-function mapRowsToCamel<T>(rows: unknown[]): T {
-	if (!Array.isArray(rows)) return rows as T;
-
-	const mapped = rows.map((row) => {
-		if (typeof row !== 'object' || row === null) return row;
-		const newObj: GenericRow = {};
-		for (const key of Object.keys(row as GenericRow)) {
-			newObj[camelize(key)] = (row as GenericRow)[key];
-		}
-		return newObj;
-	});
-
-	Object.defineProperty(mapped, 'count', {
-		value: rows.length,
-		writable: true,
-		enumerable: false
-	});
-
-	return mapped as T;
-}
-
 // Standard Postgres TCP Client
 const standardSql = postgres(connectionString, {
 	max: isProduction ? 1 : 10,
 	idle_timeout: isProduction ? 1 : 20,
-	connect_timeout: 2,
-	transform: {
-		...postgres.toCamel
-	}
+	connect_timeout: 2
 });
 
 // Neon Cloud HTTP Client
 const neonSql = isNeon ? neon(connectionString) : null;
 
-// Tipe Sql generik tunggal yang mengekspos signature fungsi template literal secara aman
+// Tipe Sql generik tunggal
 export type CustomSql = postgres.Sql;
 
 export const sql: CustomSql = isNeon
 	? (async function <T = GenericRow[]>(strings: TemplateStringsArray, ...values: SqlRowValue[]) {
 			const rows = await neonSql!(strings, ...values);
-			return mapRowsToCamel<T>(rows as unknown[]);
+			return rows as unknown as T;
 		} as unknown as CustomSql)
 	: (standardSql as unknown as CustomSql);
 

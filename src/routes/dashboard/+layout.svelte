@@ -17,11 +17,22 @@
 		PanelLeft,
 		Shield,
 		ChevronDown,
-		RotateCcwIcon,
 		X
 	} from '@lucide/svelte';
+	import { onNavigate } from '$app/navigation';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
+
+	onNavigate((navigation) => {
+		if (!document.startViewTransition) return;
+
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
 	const user = $derived(data.user);
 
@@ -81,12 +92,6 @@
 			icon: CloudUpload,
 			role: ['ADMINISTRASI']
 		},
-		{
-			name: 'Log Arsip',
-			href: '/dashboard/arsip',
-			icon: RotateCcwIcon,
-			role: ['ADMINISTRASI', 'BENDAHARA']
-		},
 		{ name: 'Manajemen Akun', href: '/dashboard/petugas', icon: UserCog, role: ['ADMINISTRASI'] }
 	];
 </script>
@@ -106,7 +111,7 @@
 	{/if}
 
 	<aside
-		class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col justify-between overflow-y-auto bg-white transition-all duration-300 ease-in-out lg:static lg:z-auto {isSidebarOpen
+		class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col justify-between bg-white transition-all duration-300 ease-in-out lg:static lg:z-auto {isSidebarOpen
 			? 'w-72 translate-x-0 border-r border-slate-200/70 p-6 opacity-100'
 			: 'pointer-events-none w-0 -translate-x-full border-none p-0 opacity-0 lg:translate-x-0'}"
 	>
@@ -188,11 +193,6 @@
 					<span>Buka panduan</span>
 					<ExternalLink class="h-3.5 w-3.5" />
 				</a>
-			</div>
-
-			<div class="space-y-1 border-t border-slate-100 pt-4">
-				<p class="text-xs font-bold text-slate-600">KONSEP INTERNAL • v1.0</p>
-				<p class="text-[11px] text-slate-400">Data ilustratif, bukan data institusi.</p>
 			</div>
 		</div>
 	</aside>

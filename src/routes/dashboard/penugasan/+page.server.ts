@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
-import type { PetugasField } from '#lib/types/database.ts';
+import type { PetugasField } from '#lib/types.ts';
 
 export interface PermohonanPendingItem {
 	id_daftar: string;
@@ -25,6 +25,7 @@ export interface RiwayatPenugasanItem {
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
+
 	if (user.role !== 'ADMINISTRASI') {
 		throw redirect(303, '/dashboard');
 	}
@@ -108,7 +109,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 		};
 	} catch (err) {
 		console.error('Error load penugasan:', err);
-		return { permohonanPending: [], auditorList: [], dewanSyariahList: [], riwayatPenugasan: [] };
+		return {
+			permohonanPending: [],
+			auditorList: [],
+			dewanSyariahList: [],
+			riwayatPenugasan: []
+		};
 	}
 };
 
@@ -145,7 +151,10 @@ export const actions = {
 		try {
 			await sql.begin(async (tx) => {
 				const permohonan = await tx`
-					SELECT id_permohonan FROM permohonan_audit WHERE id_daftar = ${id_daftar} LIMIT 1
+					SELECT id_permohonan
+					FROM permohonan_audit
+					WHERE id_daftar = ${id_daftar}
+					LIMIT 1
 				`;
 
 				if (permohonan.length === 0) {
@@ -155,7 +164,7 @@ export const actions = {
 				const idPermohonan = permohonan[0].id_permohonan;
 				const totalAuditor = id_auditor_anggota ? 2 : 1;
 
-				// 1. Insert ke tabel penugasan
+				// 1. Insert ke tabel penugasan dengan status 'ASSIGNED'
 				const resPenugasan = await tx`
 					INSERT INTO penugasan (id_permohonan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by)
 					VALUES (${idPermohonan}, ${totalAuditor}, 'ASSIGNED', ${currentUserId})
@@ -170,7 +179,7 @@ export const actions = {
 					VALUES (${idPenugasan}, ${parseInt(id_auditor_utama)})
 				`;
 
-				// 3. Insert Auditor Anggota (jika dipilih)
+				// 3. Insert Auditor Anggota (jika ada)
 				if (id_auditor_anggota) {
 					await tx`
 						INSERT INTO detail_penugasan_petugas (id_penugasan, id_petugas)
@@ -182,13 +191,6 @@ export const actions = {
 				await tx`
 					INSERT INTO detail_penugasan_petugas (id_penugasan, id_petugas)
 					VALUES (${idPenugasan}, ${parseInt(id_dewan_syariah)})
-				`;
-
-				// 5. UPDATE STATUS PERMOHONAN MENJADI 'VERIFIKASI' (Siap Ditagih Invoice)
-				await tx`
-					UPDATE permohonan_audit
-					SET status_permohonan = 'VERIFIKASI'
-					WHERE id_permohonan = ${idPermohonan}
 				`;
 			});
 

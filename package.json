@@ -13,7 +13,8 @@
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"db:migrate": "bun run scripts/migrate.ts",
-		"db:seed": "bun run scripts/migrate.ts --seed"
+		"db:seed": "bun run scripts/seed.ts",
+		"db:reset": "bun run scripts/reset.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -43,6 +44,7 @@
 	"dependencies": {
 		"@lucide/svelte": "^1.70.0",
 		"@neondatabase/serverless": "^1.2.0",
+		"bcryptjs": "^3.0.3",
 		"postgres": "^4.1.0"
 	}
 }

@@ -20,7 +20,6 @@ interface PelakuUsahaRekapRow {
 
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { user } = await parent();
-
 	const search = url.searchParams.get('q') || '';
 	const statusFilter = url.searchParams.get('status') || '';
 
@@ -28,10 +27,10 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 		// 1. Query Statistik Ringkasan dari Tabel PostgreSQL Terbaru
 		const statsRes = await sql<DashboardStatsRow[]>`
 			SELECT
-				COUNT(pu.id_daftar)::int AS total_pu,
-				COUNT(CASE WHEN p.id_penugasan IS NULL OR p.status_penugasan = 'PENDING' THEN 1 END)::int AS menunggu_verifikasi,
-				COUNT(CASE WHEN p.status_penugasan = 'ASSIGNED' AND ka.status_keuangan = 'DITERIMA' THEN 1 END)::int AS terverifikasi,
-				COUNT(CASE WHEN ka.status_keuangan = 'REVISI' THEN 1 END)::int AS perlu_revisi
+				COUNT(DISTINCT pu.id_daftar)::int AS total_pu,
+				COUNT(DISTINCT CASE WHEN p.id_penugasan IS NULL OR p.status_penugasan = 'PENDING' THEN pu.id_daftar END)::int AS menunggu_verifikasi,
+				COUNT(DISTINCT CASE WHEN p.status_penugasan = 'ASSIGNED' AND ka.status_keuangan = 'DITERIMA' THEN pu.id_daftar END)::int AS terverifikasi,
+				COUNT(DISTINCT CASE WHEN ka.status_keuangan = 'REVISI' THEN pu.id_daftar END)::int AS perlu_revisi
 			FROM pelaku_usaha pu
 			LEFT JOIN permohonan_audit pa ON pu.id_daftar = pa.id_daftar
 			LEFT JOIN penugasan p ON pa.id_permohonan = p.id_permohonan
@@ -47,7 +46,6 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 		// 2. Query Rekap Daftar Pelaku Usaha & Status
 		const querySearch = `%${search}%`;
-
 		const dataList = await sql<PelakuUsahaRekapRow[]>`
 			SELECT
 				pu.id_daftar,
@@ -59,24 +57,27 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 					JOIN penugasan p_sub ON dp.id_penugasan = p_sub.id_penugasan
 					WHERE p_sub.id_permohonan = pa.id_permohonan
 				) AS tim_auditor,
-				ka.total_biaya_final,
+				(
+					SELECT COALESCE(SUM(ka_sub.jumlah_uang), 0)
+					FROM keuangan_audit ka_sub
+					WHERE ka_sub.id_permohonan = pa.id_permohonan
+				) AS total_biaya_final,
 				p.status_penugasan,
 				ka.status_keuangan
 			FROM pelaku_usaha pu
 			JOIN permohonan_audit pa ON pu.id_daftar = pa.id_daftar
 			LEFT JOIN penugasan p ON pa.id_permohonan = p.id_permohonan
 			LEFT JOIN keuangan_audit ka ON pa.id_permohonan = ka.id_permohonan
-			WHERE
-				(pu.id_daftar ILIKE ${querySearch} OR pu.nama_pelaku_usaha ILIKE ${querySearch})
-				${
-					statusFilter === 'PENDING'
-						? sql`AND (p.status_penugasan IS NULL OR p.status_penugasan = 'PENDING')`
-						: statusFilter === 'TERVERIFIKASI'
-							? sql`AND (p.status_penugasan = 'ASSIGNED' AND ka.status_keuangan = 'DITERIMA')`
-							: statusFilter === 'REVISI'
-								? sql`AND (ka.status_keuangan = 'REVISI')`
-								: sql``
-				}
+			WHERE (pu.id_daftar ILIKE ${querySearch} OR pu.nama_pelaku_usaha ILIKE ${querySearch})
+			${
+				statusFilter === 'PENDING'
+					? sql`AND (p.status_penugasan IS NULL OR p.status_penugasan = 'PENDING')`
+					: statusFilter === 'TERVERIFIKASI'
+						? sql`AND (p.status_penugasan = 'ASSIGNED' AND ka.status_keuangan = 'DITERIMA')`
+						: statusFilter === 'REVISI'
+							? sql`AND (ka.status_keuangan = 'REVISI')`
+							: sql``
+			}
 			ORDER BY pa.tanggal_permohonan DESC
 		`;
 
@@ -89,7 +90,6 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 				perluRevisi: stats.perlu_revisi
 			},
 			pelakuUsahaList: dataList.map((row) => {
-				// Determinasi kalkulasi tampilan status ringkasan UI
 				let displayStatus = 'PENDING';
 				if (row.status_keuangan === 'REVISI') {
 					displayStatus = 'REVISI';
@@ -101,7 +101,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 					idDaftar: String(row.id_daftar),
 					namaPu: String(row.nama_pelaku_usaha),
 					timAuditor: row.tim_auditor ? String(row.tim_auditor) : 'Belum ditugaskan',
-					totalBiaya: row.total_biaya_final ? Number(row.total_biaya_final) : null,
+					totalBiaya: row.total_biaya_final !== null ? Number(row.total_biaya_final) : null,
 					status: displayStatus
 				};
 			})
@@ -125,17 +125,13 @@ export const actions = {
 			let rows: string[][] = [];
 
 			if (userRole === 'BENDAHARA') {
-				// EKSPOR KHUSUS BENDAHARA (Tabel `keuangan_audit` & `permohonan_audit`)
+				// EKSPOR KHUSUS BENDAHARA (Agregasi Tabel keuangan_audit & permohonan_audit)
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',
-					'No Invoice',
-					'Biaya Transport Talangan',
-					'Biaya UH & Penginapan',
-					'Total Biaya LPH',
-					'Biaya Input Sistem',
-					'Biaya Tambahan',
-					'Total Biaya Final',
+					'No Invoice Terakhir',
+					'Total Transaksi Keuangan',
+					'Total Nominal Uang (Rp)',
 					'Status Keuangan'
 				];
 
@@ -143,17 +139,24 @@ export const actions = {
 					SELECT
 						pu.id_daftar,
 						pu.nama_pelaku_usaha,
-						COALESCE(ka.no_invoice, '-') AS no_invoice,
-						COALESCE(ka.biaya_transport_talangan, 0) AS biaya_transport_talangan,
-						COALESCE(ka.biaya_uh_penginapan, 0) AS biaya_uh_penginapan,
-						COALESCE(ka.total_biaya_lph, 0) AS total_biaya_lph,
-						COALESCE(ka.biaya_input_sistem, 0) AS biaya_input_sistem,
-						COALESCE(ka.biaya_tambahan, 0) AS biaya_tambahan,
-						COALESCE(ka.total_biaya_final, 0) AS total_biaya_final,
-						COALESCE(ka.status_keuangan::text, 'DRAFT') AS status_keuangan
+						COALESCE(
+							(SELECT ka_sub.no_invoice
+							 FROM keuangan_audit ka_sub
+							 WHERE ka_sub.id_permohonan = pa.id_permohonan
+							 ORDER BY ka_sub.created_at DESC LIMIT 1), '-'
+						) AS no_invoice,
+						COUNT(ka.id_keuangan) AS total_transaksi,
+						COALESCE(SUM(ka.jumlah_uang), 0) AS total_biaya_final,
+						COALESCE(
+							(SELECT ka_sub.status_keuangan::text
+							 FROM keuangan_audit ka_sub
+							 WHERE ka_sub.id_permohonan = pa.id_permohonan
+							 ORDER BY ka_sub.created_at DESC LIMIT 1), 'DRAFT'
+						) AS status_keuangan
 					FROM pelaku_usaha pu
 					JOIN permohonan_audit pa ON pu.id_daftar = pa.id_daftar
 					LEFT JOIN keuangan_audit ka ON pa.id_permohonan = ka.id_permohonan
+					GROUP BY pu.id_daftar, pu.nama_pelaku_usaha, pa.id_permohonan, pa.tanggal_permohonan
 					ORDER BY pa.tanggal_permohonan DESC
 				`;
 
@@ -161,16 +164,12 @@ export const actions = {
 					`"${r.id_daftar}"`,
 					`"${r.nama_pelaku_usaha}"`,
 					`"${r.no_invoice}"`,
-					`"${r.biaya_transport_talangan}"`,
-					`"${r.biaya_uh_penginapan}"`,
-					`"${r.total_biaya_lph}"`,
-					`"${r.biaya_input_sistem}"`,
-					`"${r.biaya_tambahan}"`,
+					`"${r.total_transaksi}"`,
 					`"${r.total_biaya_final}"`,
 					`"${r.status_keuangan}"`
 				]);
 			} else {
-				// EKSPOR KHUSUS STAF ADMINISTRASI (Tabel `pelaku_usaha`, `penugasan`, & `petugas_field`)
+				// EKSPOR KHUSUS STAF ADMINISTRASI
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',

@@ -1,17 +1,15 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
+import type { JenisTransaksiEnum } from '#lib/types.ts';
 
 export interface KonfirmasiTagihanItem {
 	id_keuangan: number;
 	id_daftar: string;
 	nama_pu: string;
 	no_invoice: string;
-	biaya_transport: number;
-	biaya_uh_penginapan: number;
-	total_biaya_lph: number;
-	biaya_tambahan: number;
-	total_biaya_final: number;
+	jenis_transaksi: JenisTransaksiEnum;
+	jumlah_uang: number;
 	status_keuangan: string;
 	catatan_revisi: string | null;
 	tgl_diterbitkan: string;
@@ -19,7 +17,6 @@ export interface KonfirmasiTagihanItem {
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
-
 	if (user.role !== 'BENDAHARA') {
 		throw redirect(303, '/dashboard');
 	}
@@ -31,11 +28,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 				pa.id_daftar,
 				pu.nama_pelaku_usaha AS nama_pu,
 				ka.no_invoice,
-				COALESCE(ka.biaya_transport_talangan, 0) AS biaya_transport,
-				COALESCE(ka.biaya_uh_penginapan, 0) AS biaya_uh_penginapan,
-				COALESCE(ka.total_biaya_lph, 0) AS total_biaya_lph,
-				COALESCE(ka.biaya_tambahan, 0) AS biaya_tambahan,
-				COALESCE(ka.total_biaya_final, 0) AS total_biaya_final,
+				ka.jenis_transaksi::text AS jenis_transaksi,
+				COALESCE(ka.jumlah_uang, 0) AS jumlah_uang,
 				ka.status_keuangan::text AS status_keuangan,
 				ka.catatan_revisi,
 				ka.created_at
@@ -50,11 +44,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 			id_daftar: String(r.id_daftar),
 			nama_pu: String(r.nama_pu),
 			no_invoice: String(r.no_invoice),
-			biaya_transport: Number(r.biaya_transport),
-			biaya_uh_penginapan: Number(r.biaya_uh_penginapan),
-			total_biaya_lph: Number(r.total_biaya_lph),
-			biaya_tambahan: Number(r.biaya_tambahan),
-			total_biaya_final: Number(r.total_biaya_final),
+			jenis_transaksi: r.jenis_transaksi as JenisTransaksiEnum,
+			jumlah_uang: Number(r.jumlah_uang),
 			status_keuangan: String(r.status_keuangan ?? 'SIAP_VERIFIKASI'),
 			catatan_revisi: r.catatan_revisi ? String(r.catatan_revisi) : null,
 			tgl_diterbitkan: new Date(r.created_at).toLocaleDateString('id-ID', {
@@ -82,7 +73,6 @@ export const actions = {
 			const targetId = parseInt(id_keuangan);
 			const currentUserId = locals.user?.id_user || null;
 
-			// Mengubah status menjadi 'DITERIMA' sesuai ENUM PostgreSQL
 			await sql`
 				UPDATE keuangan_audit
 				SET
@@ -111,7 +101,10 @@ export const actions = {
 		try {
 			const targetId = parseInt(id_keuangan);
 			const checkStatus = await sql`
-				SELECT status_keuangan::text AS status_keuangan, no_invoice FROM keuangan_audit WHERE id_keuangan = ${targetId} LIMIT 1
+				SELECT status_keuangan::text AS status_keuangan, no_invoice
+				FROM keuangan_audit
+				WHERE id_keuangan = ${targetId}
+				LIMIT 1
 			`;
 
 			if (checkStatus.length === 0 || checkStatus[0].status_keuangan === 'DITERIMA') {

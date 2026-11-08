@@ -29,19 +29,6 @@
 		permohonanPending.find((p) => p.id_daftar === selectedIdDaftar) ?? permohonanPending[0]
 	);
 
-	// Inisialisasi Nama Petugas Terpilih
-	const auditorUtamaSelected = $derived(
-		auditorList.find((a) => String(a.id_petugas) === idAuditorUtama)
-	);
-
-	const auditorAnggotaSelected = $derived(
-		auditorList.find((a) => String(a.id_petugas) === idAuditorAnggota)
-	);
-
-	const dewanSyariahSelected = $derived(
-		dewanSyariahList.find((d) => String(d.id_petugas) === idDewanSyariah)
-	);
-
 	// Hitung total personil tim terpilih
 	const totalTimTerpilih = $derived(
 		(idAuditorUtama ? 1 : 0) + (idAuditorAnggota ? 1 : 0) + (idDewanSyariah ? 1 : 0)
@@ -56,16 +43,6 @@
 				r.tim_petugas.toLowerCase().includes(searchQuery.toLowerCase())
 		)
 	);
-
-	function getInitials(name: string): string {
-		if (!name) return '??';
-		return name
-			.split(' ')
-			.map((n) => n[0])
-			.slice(0, 2)
-			.join('')
-			.toUpperCase();
-	}
 </script>
 
 <svelte:head>
@@ -254,87 +231,6 @@
 							<option value={d.id_petugas}>{d.nama_petugas} (Dewan Syariah)</option>
 						{/each}
 					</select>
-				</div>
-			</div>
-
-			<!-- RINGKASAN TIM TERPILIH BOX -->
-			<div class="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-				<h4 class="text-xs font-bold text-slate-900">Ringkasan Tim Terpilih</h4>
-				<div class="space-y-2 text-xs">
-					{#if auditorUtamaSelected}
-						<div
-							class="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3"
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-[11px] font-bold text-[#059669]"
-								>
-									{getInitials(auditorUtamaSelected.nama_petugas)}
-								</div>
-								<div>
-									<p class="font-bold text-slate-900">{auditorUtamaSelected.nama_petugas}</p>
-									<p class="text-[10px] font-medium text-slate-400">Auditor Utama</p>
-								</div>
-							</div>
-							<span
-								class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-[#059669]"
-							>
-								• Terpilih
-							</span>
-						</div>
-					{/if}
-
-					{#if auditorAnggotaSelected}
-						<div
-							class="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3"
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-[11px] font-bold text-[#2563EB]"
-								>
-									{getInitials(auditorAnggotaSelected.nama_petugas)}
-								</div>
-								<div>
-									<p class="font-bold text-slate-900">{auditorAnggotaSelected.nama_petugas}</p>
-									<p class="text-[10px] font-medium text-slate-400">Auditor Anggota</p>
-								</div>
-							</div>
-							<span
-								class="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-[#2563EB]"
-							>
-								• Terpilih
-							</span>
-						</div>
-					{/if}
-
-					{#if dewanSyariahSelected}
-						<div
-							class="flex items-center justify-between rounded-xl border border-slate-200/60 bg-white p-3"
-						>
-							<div class="flex items-center gap-3">
-								<div
-									class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-[11px] font-bold text-purple-700"
-								>
-									{getInitials(dewanSyariahSelected.nama_petugas)}
-								</div>
-								<div>
-									<p class="font-bold text-slate-900">{dewanSyariahSelected.nama_petugas}</p>
-									<p class="text-[10px] font-medium text-slate-400">Dewan Syariah</p>
-								</div>
-							</div>
-							<span
-								class="rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-bold text-purple-700"
-							>
-								• Terpilih
-							</span>
-						</div>
-					{/if}
-
-					{#if !auditorUtamaSelected && !dewanSyariahSelected}
-						<p class="py-2 text-center text-[11px] text-slate-400">
-							Silakan pilih personil auditor dan dewan syariah pada form di atas.
-						</p>
-					{/if}
 				</div>
 			</div>
 

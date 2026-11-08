@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { sql } from '#lib/server/db.ts';
-import type { UserResponse } from '#lib/types/database.ts';
+import type { UserResponse } from '#lib/types.ts';
 
 export const load: LayoutServerLoad = async ({ cookies }) => {
 	const userId = cookies.get('session_user_id');

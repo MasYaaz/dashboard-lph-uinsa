@@ -41,15 +41,14 @@
 				<form method="POST" class="space-y-4">
 					<!-- Username/Email Input -->
 					<div class="space-y-1.5">
-						<label for="username" class="block text-xs font-semibold text-slate-700"
-							>Email / Username</label
+						<label for="username" class="block text-xs font-semibold text-slate-700">Username</label
 						>
 						<input
 							type="text"
 							id="username"
 							name="username"
 							value={form?.username ?? ''}
-							placeholder="nama@contoh.id"
+							placeholder="admin / bendahara"
 							required
 							autocomplete="username"
 							class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-xs text-slate-900 transition-all placeholder:text-slate-400 focus:border-[#059669] focus:bg-white focus:ring-2 focus:ring-[#059669]/20 focus:outline-none sm:text-sm"

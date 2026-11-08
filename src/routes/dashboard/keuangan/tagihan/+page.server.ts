@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
+import type { JenisTransaksiEnum } from '#lib/types.ts';
 
 export interface PermohonanSiapTagihItem {
 	id_daftar: string;
@@ -18,13 +19,18 @@ export interface TagihanItem {
 	id_daftar: string;
 	nama_pu: string;
 	no_invoice: string;
-	biaya_transportasi: number;
-	uang_harian: number;
-	penginapan: number;
-	total_biaya: number;
+	jenis_transaksi: JenisTransaksiEnum;
+	jumlah_uang: number;
 	catatan_revisi: string | null;
-	status_pembayaran: string;
+	status_keuangan: string;
 	tgl_diterbitkan: string;
+}
+
+interface ItemTransaksiPayload {
+	id?: string;
+	jenis_transaksi: JenisTransaksiEnum;
+	jumlah_uang: number;
+	catatan?: string;
 }
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -35,6 +41,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 	}
 
 	try {
+		// 1. Ambil permohonan audit yang sudah memiliki penugasan tetapi belum memiliki tagihan/keuangan
 		const permohonanSiapTagihRaw = await sql`
 			SELECT
 				pa.id_daftar,
@@ -52,18 +59,17 @@ export const load: PageServerLoad = async ({ parent }) => {
 			ORDER BY pa.tanggal_permohonan ASC
 		`;
 
+		// 2. Ambil riwayat daftar tagihan keuangan
 		const daftarTagihanRaw = await sql`
 			SELECT
 				ka.id_keuangan,
 				pa.id_daftar,
 				pu.nama_pelaku_usaha AS nama_pu,
 				ka.no_invoice,
-				COALESCE(ka.biaya_transport_talangan, 0) AS biaya_transportasi,
-				COALESCE(ka.biaya_uh_penginapan, 0) AS uang_harian,
-				COALESCE(ka.biaya_tambahan, 0) AS penginapan,
-				COALESCE(ka.total_biaya_final, 0) AS total_biaya,
+				ka.jenis_transaksi::text AS jenis_transaksi,
+				COALESCE(ka.jumlah_uang, 0) AS jumlah_uang,
 				ka.catatan_revisi,
-				ka.status_keuangan::text AS status_pembayaran,
+				ka.status_keuangan::text AS status_keuangan,
 				ka.created_at
 			FROM keuangan_audit ka
 			JOIN permohonan_audit pa ON ka.id_permohonan = pa.id_permohonan
@@ -87,12 +93,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 			id_daftar: String(r.id_daftar),
 			nama_pu: String(r.nama_pu),
 			no_invoice: String(r.no_invoice),
-			biaya_transportasi: Number(r.biaya_transportasi),
-			uang_harian: Number(r.uang_harian),
-			penginapan: Number(r.penginapan),
-			total_biaya: Number(r.total_biaya),
+			jenis_transaksi: r.jenis_transaksi as JenisTransaksiEnum,
+			jumlah_uang: Number(r.jumlah_uang),
 			catatan_revisi: r.catatan_revisi ? String(r.catatan_revisi) : null,
-			status_pembayaran: String(r.status_pembayaran),
+			status_keuangan: String(r.status_keuangan),
 			tgl_diterbitkan: new Date(r.created_at).toLocaleDateString('id-ID', {
 				day: 'numeric',
 				month: 'short',
@@ -112,23 +116,54 @@ export const actions = {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();
 		const no_invoice_manual = formData.get('no_invoice')?.toString().trim();
-		const biaya_transportasi = parseFloat(formData.get('biaya_transportasi')?.toString() || '0');
-		const uang_harian = parseFloat(formData.get('uang_harian')?.toString() || '0');
-		const penginapan = parseFloat(formData.get('penginapan')?.toString() || '0');
-		const catatan = formData.get('catatan_perhitungan')?.toString().trim() || null;
+		const itemsJson = formData.get('items_json')?.toString().trim();
 
 		if (!id_daftar) {
 			return fail(400, { success: false, error: 'Pilih Permohonan Audit terlebih dahulu.' });
 		}
 
-		const total_biaya_lph = biaya_transportasi + uang_harian;
-		const total_biaya_final = total_biaya_lph + penginapan;
+		// Parsing payload multi-item dari frontend
+		let items: ItemTransaksiPayload[] = [];
+		try {
+			if (itemsJson) {
+				items = JSON.parse(itemsJson);
+			}
+		} catch (error) {
+			return fail(400, { success: false, error: error });
+		}
 
-		if (total_biaya_final <= 0) {
-			return fail(400, {
-				success: false,
-				error: 'Total Rincian Biaya Operasional harus lebih dari Rp 0.'
-			});
+		// Jika tidak ada JSON array (fallback ke single item legacy)
+		if (items.length === 0) {
+			const jenis_transaksi = formData
+				.get('jenis_transaksi')
+				?.toString()
+				.trim() as JenisTransaksiEnum;
+			const jumlah_uang = parseFloat(formData.get('jumlah_uang')?.toString() || '0');
+			const catatan = formData.get('catatan_perhitungan')?.toString().trim() || undefined;
+
+			if (jenis_transaksi && jumlah_uang > 0) {
+				items.push({ jenis_transaksi, jumlah_uang, catatan });
+			}
+		}
+
+		if (items.length === 0) {
+			return fail(400, { success: false, error: 'Minimal harus ada 1 komponen biaya transaksi.' });
+		}
+
+		// Validasi nominal tiap item
+		for (const item of items) {
+			if (!item.jenis_transaksi) {
+				return fail(400, {
+					success: false,
+					error: 'Jenis transaksi pada komponen biaya tidak boleh kosong.'
+				});
+			}
+			if (!item.jumlah_uang || item.jumlah_uang <= 0) {
+				return fail(400, {
+					success: false,
+					error: 'Jumlah uang pada komponen biaya harus lebih dari Rp 0.'
+				});
+			}
 		}
 
 		const currentYear = new Date().getFullYear();
@@ -137,6 +172,7 @@ export const actions = {
 		const no_invoice = no_invoice_manual || `INV/LPH/${currentMonth}/${currentYear}/${randomCode}`;
 
 		try {
+			// Cek duplikasi nomor invoice
 			const checkDuplicate = await sql`
 				SELECT id_keuangan FROM keuangan_audit WHERE no_invoice = ${no_invoice} LIMIT 1
 			`;
@@ -148,6 +184,7 @@ export const actions = {
 				});
 			}
 
+			// Cek keberadaan ID Permohonan
 			const permohonanRes = await sql`
 				SELECT id_permohonan FROM permohonan_audit WHERE id_daftar = ${id_daftar} LIMIT 1
 			`;
@@ -159,40 +196,41 @@ export const actions = {
 			const id_permohonan = permohonanRes[0].id_permohonan;
 			const currentUserId = locals.user?.id_user || null;
 
-			// Menggunakan nilai enum 'SIAP_VERIFIKASI' sesuai skema PostgreSQL Anda
-			await sql`
-				INSERT INTO keuangan_audit (
-					id_permohonan,
-					no_invoice,
-					biaya_transport_talangan,
-					biaya_uh_penginapan,
-					biaya_tambahan,
-					total_biaya_lph,
-					total_biaya_final,
-					catatan_revisi,
-					status_keuangan,
-					created_by
-				) VALUES (
-					${id_permohonan},
-					${no_invoice},
-					${biaya_transportasi},
-					${uang_harian},
-					${penginapan},
-					${total_biaya_lph},
-					${total_biaya_final},
-					${catatan},
-					'SIAP_VERIFIKASI'::status_keuangan_enum,
-					${currentUserId}
-				)
-			`;
+			// Simpan seluruh multi-item transaksi dalam 1 transaksi DB (sql.begin)
+			await sql.begin(async (tx) => {
+				for (const item of items) {
+					await tx`
+						INSERT INTO keuangan_audit (
+							id_permohonan,
+							no_invoice,
+							jenis_transaksi,
+							jumlah_uang,
+							catatan_revisi,
+							status_keuangan,
+							created_by
+						) VALUES (
+							${id_permohonan},
+							${no_invoice},
+							${item.jenis_transaksi}::jenis_transaksi_enum,
+							${item.jumlah_uang},
+							${item.catatan || null},
+							'SIAP_VERIFIKASI'::status_keuangan_enum,
+							${currentUserId}
+						)
+					`;
+				}
+			});
 
 			return {
 				success: true,
-				message: `Rincian Biaya & Invoice ${no_invoice} berhasil disimpan!`
+				message: `Berhasil menyimpan ${items.length} komponen rincian biaya & Invoice ${no_invoice}!`
 			};
 		} catch (err) {
 			console.error('Error terbit tagihan:', err);
-			return fail(500, { success: false, error: 'Gagal menyimpan rincian biaya audit.' });
+			return fail(500, {
+				success: false,
+				error: 'Gagal menyimpan rincian biaya audit ke database.'
+			});
 		}
 	}
 } satisfies Actions;
