@@ -19,15 +19,42 @@ const standardSql = postgres(connectionString, {
 // Neon Cloud HTTP Client
 const neonSql = isNeon ? neon(connectionString) : null;
 
-// Tipe Sql generik tunggal
 export type CustomSql = postgres.Sql;
 
-export const sql: CustomSql = isNeon
+// Base SQL Function
+const baseSqlFunction = isNeon
 	? (async function <T = GenericRow[]>(strings: TemplateStringsArray, ...values: SqlRowValue[]) {
 			const rows = await neonSql!(strings, ...values);
 			return rows as unknown as T;
 		} as unknown as CustomSql)
 	: (standardSql as unknown as CustomSql);
+
+// Attach metode .begin tanpa tipe `any`
+const sqlProxy = baseSqlFunction as CustomSql;
+
+if (isNeon) {
+	// Implementasi custom .begin untuk Neon HTTP Client menggunakan TransactionSql bawaan library
+	sqlProxy.begin = (async <T>(
+		cb: (tx: postgres.TransactionSql<Record<string, unknown>>) => Promise<T>
+	): Promise<T> => {
+		await baseSqlFunction`BEGIN`;
+		try {
+			const result = await cb(
+				baseSqlFunction as unknown as postgres.TransactionSql<Record<string, unknown>>
+			);
+			await baseSqlFunction`COMMIT`;
+			return result;
+		} catch (error) {
+			await baseSqlFunction`ROLLBACK`;
+			throw error;
+		}
+	}) as typeof standardSql.begin;
+} else {
+	// Menggunakan .begin bawaan dari postgres driver
+	sqlProxy.begin = standardSql.begin.bind(standardSql);
+}
+
+export const sql = sqlProxy;
 
 let pgAvailableCache: { ok: boolean; checkedAt: number } | null = null;
 const PG_CACHE_TTL_MS = 15_000;
@@ -37,8 +64,9 @@ export async function checkDbConnection(): Promise<{ ok: boolean; message?: stri
 	if (pgAvailableCache && now - pgAvailableCache.checkedAt < PG_CACHE_TTL_MS) {
 		return { ok: pgAvailableCache.ok };
 	}
+
 	try {
-		await sql`SELECT 1 FROM stores LIMIT 1`;
+		await sql`SELECT 1 LIMIT 1`;
 		pgAvailableCache = { ok: true, checkedAt: now };
 		return { ok: true };
 	} catch (err: unknown) {
