@@ -22,9 +22,9 @@
    inkscape:pageopacity="0.0"
    inkscape:pagecheckerboard="0"
    inkscape:deskcolor="#d1d1d1"
-   inkscape:zoom="1.0425"
-   inkscape:cx="63.788969"
-   inkscape:cy="157.31415"
+   inkscape:zoom="2.9486353"
+   inkscape:cx="176.1832"
+   inkscape:cy="119.7164"
    inkscape:window-width="1920"
    inkscape:window-height="1006"
    inkscape:window-x="0"
@@ -47,7 +47,8 @@
         
         <g
    id="g14"
-   transform="translate(0,22)"><path
+   transform="matrix(1,0,0,1.0979966,1.0174198,14.199781)"
+   style="fill:#ffffff"><path
      d="M 38.619,81.441 54.98,96.57 54.796,38.899 70.557,24.062 H 38.588 Z"
      style="fill:#ffffff"
      id="path3" /><path

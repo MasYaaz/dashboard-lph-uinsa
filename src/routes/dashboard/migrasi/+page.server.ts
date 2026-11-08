@@ -77,7 +77,6 @@ export const actions = {
 			];
 
 			let successCount = 0;
-			let errorCount = 0;
 
 			for (const row of sampleBatchData) {
 				// Cek duplikasi ID Daftar
@@ -86,7 +85,6 @@ export const actions = {
         `;
 
 				if (existing.length > 0) {
-					errorCount++;
 					await sql`
             INSERT INTO import_log (nama_berkas, baris_ke, id_daftar_input, jenis_error, pesan_error, uploaded_by)
             VALUES (${fileName}, ${row.baris}, ${row.id_daftar}, 'DUPLIKAT_ERROR', ${'No ID-Daftar sudah terdaftar dalam sistem'}, ${currentUserId})

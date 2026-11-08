@@ -1,15 +1,16 @@
 <script lang="ts">
 	import type { Snippet, Component } from 'svelte';
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
-	import type { LayoutData, RouteId } from './$types';
-	import logo from '#lib/assets/light.svg';
+	import type { LayoutData } from './$types';
+	import logo from '$lib/assets/light.svg';
 	import {
 		LayoutGrid,
 		Users,
 		Receipt,
 		BadgeCheck,
 		UserCog,
+		BookOpen,
+		ExternalLink,
 		LogOut,
 		BuildingComplex,
 		CloudUpload,
@@ -24,7 +25,6 @@
 
 	const user = $derived(data.user);
 
-	// State Sidebar (secara bawaan terbuka di desktop, tertutup di mobile)
 	let isSidebarOpen = $state(true);
 	let showProfileMenu = $state(false);
 
@@ -32,7 +32,7 @@
 		user.nama_lengkap
 			? user.nama_lengkap
 					.split(' ')
-					.map((n) => n[0])
+					.map((n: string) => n[0])
 					.slice(0, 2)
 					.join('')
 					.toUpperCase()
@@ -43,7 +43,7 @@
 
 	interface NavItem {
 		name: string;
-		href: RouteId;
+		href: string;
 		icon: Component;
 		role: string[];
 		badge?: string;
@@ -96,7 +96,6 @@
 </svelte:head>
 
 <div class="relative flex h-screen w-screen overflow-hidden bg-[#F8FAFC] font-sans text-slate-800">
-	<!-- BACKDROP OVERLAY UNTUK LAYAR MOBILE -->
 	{#if isSidebarOpen}
 		<button
 			type="button"
@@ -106,14 +105,12 @@
 		></button>
 	{/if}
 
-	<!-- SIDEBAR DRAWER (COLLAPSIBLE DESKTOP + SLIDE OVER MOBILE) -->
 	<aside
-		class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col justify-between bg-white transition-all duration-300 ease-in-out lg:static lg:z-auto {isSidebarOpen
+		class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col justify-between overflow-y-auto bg-white transition-all duration-300 ease-in-out lg:static lg:z-auto {isSidebarOpen
 			? 'w-72 translate-x-0 border-r border-slate-200/70 p-6 opacity-100'
 			: 'pointer-events-none w-0 -translate-x-full border-none p-0 opacity-0 lg:translate-x-0'}"
 	>
 		<div class="w-60 space-y-6">
-			<!-- BRAND LOGO & HEADER -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<img src={logo} alt="Logo Uinsa" class="h-9" />
@@ -125,7 +122,6 @@
 					</div>
 				</div>
 
-				<!-- TOMBOL CLOSE SIDEBAR DI MOBILE -->
 				<button
 					type="button"
 					onclick={() => (isSidebarOpen = false)}
@@ -135,7 +131,6 @@
 				</button>
 			</div>
 
-			<!-- NAVIGATION MENU -->
 			<div class="space-y-2">
 				<div class="px-1 text-[11px] font-bold tracking-wider text-slate-400 uppercase">
 					Menu Utama
@@ -145,10 +140,10 @@
 						{#if item.role.includes(user.role)}
 							{@const isActive = page.url.pathname === item.href}
 							{@const IconComponent = item.icon}
+							<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 							<a
-								href={resolve(item.href)}
+								href={item.href}
 								onclick={() => {
-									// Otomatis tutup sidebar di layar mobile setelah klik menu
 									if (window.innerWidth < 1024) isSidebarOpen = false;
 								}}
 								class="flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-semibold transition-all duration-150 {isActive
@@ -175,8 +170,26 @@
 			</div>
 		</div>
 
-		<!-- SIDEBAR BOTTOM SECTION -->
 		<div class="w-60 space-y-6 pt-6">
+			<div class="space-y-3 rounded-2xl border border-blue-100/60 bg-blue-50/60 p-4">
+				<div class="flex items-center gap-2 text-[#2563EB]">
+					<BookOpen class="h-5 w-5" />
+				</div>
+				<div class="space-y-1">
+					<h3 class="text-xs font-bold text-slate-900">Butuh panduan?</h3>
+					<p class="text-[11px] leading-relaxed text-slate-500">
+						Pelajari alur pemeriksaan dan administrasi halal.
+					</p>
+				</div>
+				<a
+					href="#panduan"
+					class="inline-flex items-center gap-1.5 text-xs font-bold text-[#2563EB] hover:underline"
+				>
+					<span>Buka panduan</span>
+					<ExternalLink class="h-3.5 w-3.5" />
+				</a>
+			</div>
+
 			<div class="space-y-1 border-t border-slate-100 pt-4">
 				<p class="text-xs font-bold text-slate-600">KONSEP INTERNAL • v1.0</p>
 				<p class="text-[11px] text-slate-400">Data ilustratif, bukan data institusi.</p>
@@ -184,9 +197,7 @@
 		</div>
 	</aside>
 
-	<!-- MAIN CONTENT CONTAINER -->
 	<div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-		<!-- RESPONSIVE TOPBAR HEADER -->
 		<header
 			class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white px-4 md:px-8"
 		>
@@ -204,7 +215,6 @@
 				</span>
 			</div>
 
-			<!-- PROFILE & ROLE BADGE -->
 			<div class="flex items-center gap-3 md:gap-5">
 				<div
 					class="hidden items-center gap-2 rounded-full bg-blue-50/80 px-3.5 py-1.5 text-xs font-semibold text-[#2563EB] sm:flex"
@@ -251,7 +261,6 @@
 			</div>
 		</header>
 
-		<!-- MAIN CONTENT SCROLLABLE BODY -->
 		<main class="flex-1 overflow-y-auto p-4 md:p-8">
 			{@render children()}
 		</main>

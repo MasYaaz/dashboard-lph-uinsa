@@ -189,7 +189,9 @@
 									</button>
 
 									<a
-										href={resolve(`/dashboard/keuangan/konfirmasi/${t.id_keuangan}/edit`)}
+										href={resolve('/dashboard/keuangan/konfirmasi/[id]/edit', {
+											id: String(t.id_keuangan)
+										})}
 										class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
 									>
 										<Pen class="h-3 w-3" />

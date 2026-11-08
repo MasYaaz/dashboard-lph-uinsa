@@ -6,10 +6,10 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const tagihan = $derived(data.tagihan);
 
-	let transport = $derived(tagihan.biaya_transportasi);
-	let uh = $derived(tagihan.uang_harian);
-	let penginapan = $derived(tagihan.penginapan);
-	let catatan = $derived(tagihan.catatan_perhitungan);
+	let transport = $derived(tagihan.biaya_transport_talangan);
+	let uh = $derived(tagihan.biaya_tambahan);
+	let penginapan = $derived(tagihan.biaya_uh_penginapan);
+	let catatan = $derived(tagihan.catatan_revisi);
 
 	const totalBaru = $derived(Number(transport || 0) + Number(uh || 0) + Number(penginapan || 0));
 
@@ -31,7 +31,7 @@
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Edit Rincian Biaya Invoice</h1>
 			<p class="mt-1 text-xs text-slate-500">
-				{tagihan.no_invoice} • {tagihan.nama_pu} ({tagihan.id_daftar})
+				{tagihan.no_invoice} • {tagihan.nama_pu} ({tagihan.id_keuangan})
 			</p>
 		</div>
 

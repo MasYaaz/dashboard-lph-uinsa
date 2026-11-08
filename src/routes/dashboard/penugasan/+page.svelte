@@ -33,9 +33,11 @@
 	const auditorUtamaSelected = $derived(
 		auditorList.find((a) => String(a.id_petugas) === idAuditorUtama)
 	);
+
 	const auditorAnggotaSelected = $derived(
 		auditorList.find((a) => String(a.id_petugas) === idAuditorAnggota)
 	);
+
 	const dewanSyariahSelected = $derived(
 		dewanSyariahList.find((d) => String(d.id_petugas) === idDewanSyariah)
 	);
