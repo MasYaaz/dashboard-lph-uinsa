@@ -2,7 +2,7 @@
 	import type { Snippet, Component } from 'svelte';
 	import { page } from '$app/state';
 	import type { LayoutData } from './$types';
-	import logo from '$lib/assets/light.svg';
+	import logo from '#lib/assets/light.svg';
 	import {
 		LayoutGrid,
 		Users,
