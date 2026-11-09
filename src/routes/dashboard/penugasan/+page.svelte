@@ -46,14 +46,14 @@
 </script>
 
 <svelte:head>
-	<title>Penugasan Tim Field - SIM LPH</title>
+	<title>Penugasan Tim - SIM LPH</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl space-y-8">
 	<!-- HEADER TITLE -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Penugasan Tim Field</h1>
+			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Penugasan Tim</h1>
 			<p class="mt-1 text-xs text-slate-500">
 				Atur komposisi tim auditor & Dewan Syariah sesuai kebutuhan dan ketersediaan petugas.
 			</p>

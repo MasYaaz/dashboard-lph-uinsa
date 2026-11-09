@@ -17,13 +17,13 @@
 </script>
 
 <svelte:head>
-	<title>Migrasi Excel - SIM Internal LPH</title>
+	<title>Migrasi Data - SIM Internal LPH</title>
 </svelte:head>
 
 <div class="space-y-8">
 	<!-- Page Header -->
 	<div>
-		<h1 class="text-2xl font-bold tracking-tight text-[#0F172A]">Batch Import Data Excel</h1>
+		<h1 class="text-2xl font-bold tracking-tight text-[#0F172A]">Migrasi Data Lama</h1>
 		<p class="mt-1 text-sm text-slate-500">
 			Migrasi massal data Pelaku Usaha, Permohonan Audit, Keuangan, dan Tim Petugas dari berkas
 			spreadsheet.

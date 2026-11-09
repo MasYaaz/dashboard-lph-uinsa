@@ -2,7 +2,7 @@ import postgres from 'postgres';
 import { neon } from '@neondatabase/serverless';
 import { DATABASE_URL } from '$app/env/private';
 
-const connectionString = DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/hargapas';
+const connectionString = DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/dashboard_db';
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.NETLIFY;
 const isNeon = connectionString.includes('neon.tech');
 

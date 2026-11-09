@@ -87,12 +87,12 @@
 			role: ['BENDAHARA']
 		},
 		{
-			name: 'Impor Histori',
+			name: 'Migrasi Data',
 			href: '/dashboard/migrasi',
 			icon: CloudUpload,
 			role: ['ADMINISTRASI']
 		},
-		{ name: 'Manajemen Akun', href: '/dashboard/petugas', icon: UserCog, role: ['ADMINISTRASI'] }
+		{ name: 'Manajemen Petugas', href: '/dashboard/petugas', icon: UserCog, role: ['ADMINISTRASI'] }
 	];
 </script>
 

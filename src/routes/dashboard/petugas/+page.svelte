@@ -55,14 +55,14 @@
 </script>
 
 <svelte:head>
-	<title>Master Petugas Field - SIM LPH</title>
+	<title>Manajemen Petugas - SIM LPH</title>
 </svelte:head>
 
 <div class="space-y-6">
 	<!-- TOP PAGE HEADER & NAVIGATION -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Master Petugas Field</h1>
+			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Manajemen Petugas</h1>
 			<p class="mt-1 text-xs text-slate-500">
 				Kelola personil Auditor Halal dan Dewan Syariah LPH dalam satu tempat.
 			</p>
