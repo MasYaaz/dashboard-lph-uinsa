@@ -2,14 +2,23 @@
 	import { resolve } from '$app/paths';
 	import type { PageData, ActionData } from './$types';
 	import type { JenisTransaksiEnum } from '#lib/types.ts';
-	import { CircleCheck, TriangleAlert, Search, X, Trash } from '@lucide/svelte';
+	import {
+		CircleCheck,
+		TriangleAlert,
+		Search,
+		X,
+		Trash,
+		Plus,
+		Pencil,
+		ReceiptText
+	} from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const daftarTagihan = $derived(data?.daftarTagihan ?? []);
+
 	let searchQuery = $state('');
 	let statusFilter = $state('ALL');
-
 	let selectedDeleteTagihan = $state<{ id: number; invoice: string } | null>(null);
 	let selectedKonfirmasiTagihan = $state<{
 		id: number;
@@ -34,9 +43,11 @@
 				item.no_invoice.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				item.id_daftar.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				item.nama_pu.toLowerCase().includes(searchQuery.toLowerCase());
+
 			const isDiterima = item.status_keuangan === 'DITERIMA';
 			const matchStatus =
 				statusFilter === 'ALL' ? true : statusFilter === 'DITERIMA' ? isDiterima : !isDiterima;
+
 			return matchSearch && matchStatus;
 		})
 	);
@@ -51,7 +62,7 @@
 </script>
 
 <svelte:head>
-	<title>Konfirmasi Pembayaran & Verifikasi - SIM LPH</title>
+	<title>Daftar Invoice Tagihan - SIM LPH</title>
 </svelte:head>
 
 <div class="space-y-6">
@@ -62,33 +73,34 @@
 				Verifikasi & Konfirmasi Pembayaran
 			</h1>
 			<p class="mt-1 text-xs text-slate-500">
-				Kelola konfirmasi pembayaran invoice audit, verifikasi transaksi, dan pembatalan tagihan.
+				Kelola konfirmasi pembayaran invoice audit, rincian komponen transaksi, dan verifikasi
+				tagihan.
 			</p>
 		</div>
 		<a
-			href={resolve(`/dashboard/keuangan/tagihan`)}
-			class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50"
+			href={resolve('/dashboard/tagihan/new')}
+			class="inline-flex h-10 items-center gap-2 rounded-full bg-[#059669] px-5 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857]"
 		>
-			+ Terbitkan Invoice Baru
+			<Plus class="h-4 w-4" />
+			<span>Terbitkan Invoice Baru</span>
 		</a>
 	</div>
 
-	<!-- ALERT TOAST -->
+	<!-- ALERT TOAST SUCCESS / ERROR -->
 	{#if form?.success}
 		<div
-			class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs"
+			class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs font-semibold text-emerald-900"
 		>
 			<CircleCheck class="h-5 w-5 shrink-0 text-[#059669]" />
-			<p class="font-bold text-emerald-900">{form.message}</p>
+			<span>{form.message}</span>
 		</div>
 	{/if}
-
 	{#if form?.error}
 		<div
-			class="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs"
+			class="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs font-semibold text-rose-900"
 		>
 			<TriangleAlert class="h-5 w-5 shrink-0 text-rose-600" />
-			<p class="font-bold text-rose-900">{form.error}</p>
+			<span>{form.error}</span>
 		</div>
 	{/if}
 
@@ -98,8 +110,8 @@
 			class="flex flex-col items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/30 p-6 md:flex-row"
 		>
 			<div>
-				<h2 class="text-sm font-bold text-slate-900">Daftar Invoice Penagihan</h2>
-				<p class="text-xs text-slate-400">Total {filteredTagihan.length} tagihan ditemukan</p>
+				<h2 class="text-sm font-bold text-slate-900">Daftar Invoice Penagihan Header-Detail</h2>
+				<p class="text-xs text-slate-400">Total {filteredTagihan.length} invoice ditemukan</p>
 			</div>
 			<div class="flex w-full items-center gap-3 md:w-auto">
 				<select
@@ -110,6 +122,7 @@
 					<option value="SIAP_VERIFIKASI">Siap Verifikasi</option>
 					<option value="DITERIMA">Diterima / Lunas</option>
 				</select>
+
 				<div class="relative w-full md:w-64">
 					<input
 						type="text"
@@ -130,8 +143,8 @@
 					>
 						<th class="px-6 py-3.5">No Invoice</th>
 						<th class="px-6 py-3.5">Pelaku Usaha</th>
-						<th class="px-6 py-3.5">Jenis Transaksi</th>
-						<th class="px-6 py-3.5">Jumlah Uang</th>
+						<th class="px-6 py-3.5">Rincian Komponen Biaya</th>
+						<th class="px-6 py-3.5">Total Tagihan</th>
 						<th class="px-6 py-3.5">Tanggal</th>
 						<th class="px-6 py-3.5">Status</th>
 						<th class="px-6 py-3.5 text-right">Aksi</th>
@@ -140,20 +153,33 @@
 				<tbody class="divide-y divide-slate-100 text-[12px] font-medium text-slate-700">
 					{#each filteredTagihan as t (t.id_keuangan)}
 						<tr class="transition-colors hover:bg-slate-50/80">
-							<td class="px-6 py-4 font-bold text-[#059669]">{t.no_invoice}</td>
+							<td class="px-6 py-4 font-mono font-bold text-[#059669]">
+								<div class="flex items-center gap-1.5">
+									<ReceiptText class="h-4 w-4 text-emerald-600" />
+									<span>{t.no_invoice}</span>
+								</div>
+							</td>
 							<td class="px-6 py-4">
 								<p class="font-bold text-slate-900">{t.nama_pu}</p>
 								<p class="text-[11px] text-slate-400">{t.id_daftar}</p>
 							</td>
 							<td class="px-6 py-4">
-								<span
-									class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
-								>
-									{mapLabelJenis[t.jenis_transaksi] ?? t.jenis_transaksi}
-								</span>
+								<div class="flex max-w-xs flex-wrap gap-1">
+									{#each t.items as item (item.id_detail_keuangan)}
+										<span
+											class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-semibold text-slate-700"
+										>
+											{mapLabelJenis[item.jenis_transaksi] ?? item.jenis_transaksi} ({formatRupiah(
+												item.jumlah_uang
+											)})
+										</span>
+									{:else}
+										<span class="text-[11px] text-slate-400 italic">Belum ada rincian</span>
+									{/each}
+								</div>
 							</td>
 							<td class="px-6 py-4 font-extrabold text-slate-900">
-								{formatRupiah(t.jumlah_uang)}
+								{formatRupiah(t.total_tagihan)}
 							</td>
 							<td class="px-6 py-4 text-slate-500">{t.tgl_diterbitkan}</td>
 							<td class="px-6 py-4">
@@ -179,6 +205,7 @@
 							</td>
 							<td class="space-x-1.5 px-6 py-4 text-right">
 								{#if t.status_keuangan !== 'DITERIMA'}
+									<!-- Tombol Konfirmasi -->
 									<button
 										type="button"
 										onclick={() =>
@@ -186,20 +213,32 @@
 												id: t.id_keuangan,
 												invoice: t.no_invoice,
 												nama: t.nama_pu,
-												total: t.jumlah_uang
+												total: t.total_tagihan
 											})}
-										class="inline-flex cursor-pointer items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#059669] hover:bg-emerald-100"
+										class="inline-flex cursor-pointer items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-[#059669] transition-all hover:bg-emerald-100"
 									>
-										<CircleCheck class="h-3 w-3" />
+										<CircleCheck class="h-3.5 w-3.5" />
 										<span>Konfirmasi</span>
 									</button>
+
+									<!-- Tombol Edit (Mengarahkan ke rute tagihan edit) -->
+									<a
+										href={resolve('/dashboard/tagihan/[id]/edit', { id: String(t.id_keuangan) })}
+										class="inline-flex cursor-pointer items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-50"
+										title="Edit Invoice"
+									>
+										<Pencil class="h-3 w-3" />
+										<span>Edit</span>
+									</a>
+
+									<!-- Tombol Hapus -->
 									<button
 										type="button"
 										onclick={() =>
 											(selectedDeleteTagihan = { id: t.id_keuangan, invoice: t.no_invoice })}
-										class="inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+										class="inline-flex cursor-pointer items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-rose-600 transition-all hover:bg-rose-50"
 									>
-										<Trash class="h-3 w-3" />
+										<Trash class="h-3.5 w-3.5" />
 										<span>Hapus</span>
 									</button>
 								{:else}
@@ -243,19 +282,20 @@
 
 			<div class="space-y-1 text-xs">
 				<p class="text-slate-500">Nomor Invoice:</p>
-				<p class="font-bold text-[#059669]">{selectedKonfirmasiTagihan.invoice}</p>
+				<p class="font-mono font-bold text-[#059669]">{selectedKonfirmasiTagihan.invoice}</p>
 				<p class="pt-1 text-slate-500">
 					Pelaku Usaha: <strong class="text-slate-900">{selectedKonfirmasiTagihan.nama}</strong>
 				</p>
 				<p class="text-slate-500">
-					Total Pembayaran:
-					<strong class="text-slate-900">{formatRupiah(selectedKonfirmasiTagihan.total)}</strong>
+					Total Pembayaran: <strong class="text-slate-900"
+						>{formatRupiah(selectedKonfirmasiTagihan.total)}</strong
+					>
 				</p>
 			</div>
 
 			<p class="text-[11px] leading-relaxed text-slate-400">
-				Tindakan ini akan mengonfirmasi bahwa dana audit telah diterima dan mengubah status menjadi
-				<strong>DITERIMA</strong> (Terkunci).
+				Tindakan ini akan mengonfirmasi bahwa seluruh rincian dana pada invoice ini telah diterima
+				dan mengubah status menjadi <strong>DITERIMA</strong> (Terkunci).
 			</p>
 
 			<div class="flex items-center justify-end gap-3 pt-2">
@@ -266,6 +306,7 @@
 				>
 					Batal
 				</button>
+
 				<form method="POST" action="?/konfirmasiPembayaran">
 					<input type="hidden" name="id_keuangan" value={selectedKonfirmasiTagihan.id} />
 					<button
@@ -300,8 +341,9 @@
 			</div>
 
 			<p class="text-xs leading-relaxed text-slate-600">
-				Apakah Anda yakin ingin menghapus invoice
-				<strong class="text-slate-900">{selectedDeleteTagihan.invoice}</strong>?
+				Apakah Anda yakin ingin menghapus invoice <strong class="font-mono text-slate-900"
+					>{selectedDeleteTagihan.invoice}</strong
+				> beserta seluruh rincian komponen biayanya?
 			</p>
 
 			<div class="flex items-center justify-end gap-3 pt-2">
@@ -312,6 +354,7 @@
 				>
 					Batal
 				</button>
+
 				<form method="POST" action="?/hapusTagihan">
 					<input type="hidden" name="id_keuangan" value={selectedDeleteTagihan.id} />
 					<button

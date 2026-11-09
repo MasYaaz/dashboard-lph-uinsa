@@ -1,6 +1,7 @@
 // =============================================================================
 // 1. ENUM TYPES
 // =============================================================================
+
 export type RoleLogin = 'ADMINISTRASI' | 'BENDAHARA';
 export type StatusPenugasan = 'PENDING' | 'ASSIGNED' | 'REASSIGNED';
 export type StatusKeuangan = 'DRAFT' | 'SIAP_VERIFIKASI' | 'DITERIMA' | 'REVISI';
@@ -20,7 +21,7 @@ export type JenisTransaksiEnum =
 // 2. TABEL AKUN LOGIN & PETUGAS FIELD
 // =============================================================================
 
-/** Tabel `users` - Akun yang boleh login (Tanpa Email) */
+/** Tabel `users` - Akun yang boleh login */
 export interface User {
 	id_user: number;
 	nama_lengkap: string;
@@ -36,7 +37,7 @@ export interface User {
 /** Tipe DTO untuk respon sanitasi User (tanpa password_hash) */
 export type UserResponse = Omit<User, 'password_hash'>;
 
-/** Tabel `petugas_field` - Data Auditor & Dewan SyARIAH (Tanpa Login) */
+/** Tabel `petugas_field` - Data Auditor & Dewan Syariah */
 export interface PetugasField {
 	id_petugas: number;
 	nama_petugas: string;
@@ -47,18 +48,18 @@ export interface PetugasField {
 }
 
 // =============================================================================
-// 3. UC-01: PELAKU USAHA & PERMOHONAN (Sesuai Struktur Data Excel)
+// 3. PELAKU USAHA & PERMOHONAN
 // =============================================================================
 
 /** Tabel `pelaku_usaha` */
 export interface PelakuUsaha {
-	id_daftar: string; // 1. No ID-Daftar
-	nama_pelaku_usaha: string; // 2. Nama Pelaku Usaha
-	jumlah_produk: number; // 3. Jumlah Produk
-	jumlah_outlet: number; // 4. Jumlah Outlet/Pabrik
-	alamat_outlet: string; // 5. Alamat Outlet/Pabrik
-	jarak_dari_pusat_kota: number; // 6. Jarak dari Pusat Kota (km)
-	nama_kontak_penyelia: string; // 7. Nama & Kontak Penyelia
+	id_daftar: string; // No ID-Daftar / No Registrasi
+	nama_pelaku_usaha: string;
+	jumlah_produk: number;
+	jumlah_outlet: number;
+	alamat_outlet: string;
+	jarak_dari_pusat_kota: number; // Jarak dari Pusat Kota (km)
+	kontak_penyelia: string;
 	created_by: number | null;
 	created_at: Date | string;
 	updated_at: Date | string;
@@ -73,14 +74,14 @@ export interface PermohonanAudit {
 }
 
 // =============================================================================
-// 4. UC-02: PENUGASAN TIM AUDITOR & DEWAN SYARIAH
+// 4. PENUGASAN TIM AUDITOR & DEWAN SYARIAH
 // =============================================================================
 
 /** Tabel `penugasan` */
 export interface Penugasan {
 	id_penugasan: number;
 	id_permohonan: number;
-	kebutuhan_jumlah_auditor: number; // 1. Kebutuhan Jumlah Auditor
+	kebutuhan_jumlah_auditor: number;
 	status_penugasan: StatusPenugasan;
 	assigned_by: number | null;
 	created_at: Date | string;
@@ -91,24 +92,38 @@ export interface Penugasan {
 export interface DetailPenugasanPetugas {
 	id_detail: number;
 	id_penugasan: number;
-	id_petugas: number; // Linked to petugas_field (Auditor & Dewan Syariah)
+	id_petugas: number;
 }
 
 // =============================================================================
-// 5. UC-03, UC-04, UC-05: KEUANGAN AUDIT (Sesuai Skema Transaksi Baru)
+// 5. KEUANGAN AUDIT (Struktur Header & Detail Item Transaksi)
 // =============================================================================
 
-/** Tabel `keuangan_audit` */
+/** Tabel `keuangan_audit` - Header Invoice / Tagihan Utama */
 export interface KeuanganAudit {
 	id_keuangan: number;
 	id_permohonan: number;
-	no_invoice: string; // Nomor Invoice Penagihan
-	jenis_transaksi: JenisTransaksiEnum; // Jenis Transaksi berbasis ENUM
-	jumlah_uang: number; // Nominal / Jumlah Uang (Rp)
+	no_invoice: string; // Unique Invoice Number
+	total_tagihan: number; // Akumulasi Jumlah Uang dari Seluruh Item Detail (Rp)
 	status_keuangan: StatusKeuangan;
 	catatan_revisi: string | null;
 	created_by: number | null;
 	verified_by: number | null;
 	created_at: Date | string;
 	updated_at: Date | string;
+}
+
+/** Tabel `detail_keuangan_audit` - Item Rincian Biaya per Invoice */
+export interface DetailKeuanganAudit {
+	id_detail_keuangan: number;
+	id_keuangan: number; // FK ke `keuangan_audit`
+	jenis_transaksi: JenisTransaksiEnum;
+	keterangan: string | null;
+	jumlah_uang: number; // Nominal per item transaksi (Rp)
+	created_at: Date | string;
+}
+
+/** Interface Gabungan DTO Header + Detail Item Biaya (Untuk Frontend Form / Preview Edit) */
+export interface KeuanganAuditWithDetails extends KeuanganAudit {
+	items: DetailKeuanganAudit[];
 }

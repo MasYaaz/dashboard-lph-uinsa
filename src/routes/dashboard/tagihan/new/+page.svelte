@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { PageData, ActionData } from './$types';
 	import type { JenisTransaksiEnum } from '#lib/types.ts';
-	import { CircleCheck, TriangleAlert, Save, Plus, Trash } from '@lucide/svelte';
+	import { TriangleAlert, Save, Plus, Trash, ArrowLeft } from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	const permohonanSiapTagih = $derived(data.permohonanSiapTagih);
+	const permohonanSiapTagih = $derived(data.permohonanSiapTagih ?? []);
 
 	let selectedIdDaftar = $state('');
 	let noInvoiceInput = $state('');
@@ -20,12 +21,7 @@
 
 	// Dynamic array items
 	let itemsTransaksi = $state<ItemTransaksi[]>([
-		{
-			id: crypto.randomUUID(),
-			jenis_transaksi: 'TAGIHAN_FINAL',
-			jumlah_uang: 3600000,
-			catatan: ''
-		}
+		{ id: crypto.randomUUID(), jenis_transaksi: 'TAGIHAN_FINAL', jumlah_uang: 3600000, catatan: '' }
 	]);
 
 	const opsiJenisTransaksi: { value: JenisTransaksiEnum; label: string }[] = [
@@ -44,7 +40,7 @@
 	);
 
 	$effect(() => {
-		if (selectedIdDaftar) {
+		if (selectedIdDaftar && !noInvoiceInput) {
 			const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
 			const currentYear = new Date().getFullYear();
 			const suffix = Math.floor(100 + Math.random() * 900);
@@ -53,12 +49,10 @@
 	});
 
 	function tambahItem() {
-		itemsTransaksi.push({
-			id: crypto.randomUUID(),
-			jenis_transaksi: 'BIAYA_LAIN',
-			jumlah_uang: 0,
-			catatan: ''
-		});
+		itemsTransaksi = [
+			...itemsTransaksi,
+			{ id: crypto.randomUUID(), jenis_transaksi: 'BIAYA_LAIN', jumlah_uang: 0, catatan: '' }
+		];
 	}
 
 	function hapusItem(id: string) {
@@ -72,7 +66,7 @@
 			style: 'currency',
 			currency: 'IDR',
 			maximumFractionDigits: 0
-		}).format(amount);
+		}).format(amount || 0);
 	}
 
 	function getLabelTransaksi(val: string): string {
@@ -81,17 +75,27 @@
 </script>
 
 <svelte:head>
-	<title>Rincian Biaya Audit - SIM LPH</title>
+	<title>Terbitkan Invoice Baru - SIM LPH</title>
 </svelte:head>
 
 <div class="space-y-8">
-	<!-- HEADER TITLE & ACTION -->
+	<!-- HEADER TITLE & NAVIGATION -->
 	<div class="flex items-center justify-between">
-		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Rincian Biaya Audit</h1>
-			<p class="mt-1 text-xs text-slate-500">
-				Catat rincian komponen transaksi biaya operasional audit dan terbitkan invoice tagihan baru.
-			</p>
+		<div class="flex items-center gap-4">
+			<a
+				href={resolve('/dashboard/tagihan')}
+				class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:bg-slate-50 hover:text-slate-900"
+				aria-label="Kembali ke Daftar Tagihan"
+			>
+				<ArrowLeft class="h-4 w-4" />
+			</a>
+			<div>
+				<h1 class="text-2xl font-bold tracking-tight text-slate-900">Terbitkan Invoice Baru</h1>
+				<p class="mt-1 text-xs text-slate-500">
+					Catat rincian komponen transaksi biaya operasional audit dan terbitkan invoice penagihan
+					baru.
+				</p>
+			</div>
 		</div>
 		<button
 			type="submit"
@@ -100,26 +104,17 @@
 			class="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-[#059669] px-6 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857] disabled:opacity-40"
 		>
 			<Save class="h-4 w-4" />
-			<span>Simpan Seluruh Transaksi</span>
+			<span>Simpan & Terbitkan Invoice</span>
 		</button>
 	</div>
 
-	<!-- ALERT TOAST -->
-	{#if form?.success}
-		<div
-			class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs"
-		>
-			<CircleCheck class="h-5 w-5 shrink-0 text-[#059669]" />
-			<p class="font-bold text-emerald-900">{form.message}</p>
-		</div>
-	{/if}
-
+	<!-- ALERT TOAST ERROR -->
 	{#if form?.error}
 		<div
-			class="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs"
+			class="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/80 p-4 text-xs font-semibold text-rose-900"
 		>
 			<TriangleAlert class="h-5 w-5 shrink-0 text-rose-600" />
-			<p class="font-bold text-rose-900">{form.error}</p>
+			<span>{form.error}</span>
 		</div>
 	{/if}
 
@@ -131,7 +126,7 @@
 				id="form-terbit-tagihan"
 				method="POST"
 				action="?/terbitkanTagihan"
-				class="space-y-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xs sm:p-8"
+				class="space-y-6 rounded-3xl border border-slate-200/80 bg-white p-6 shadow-2xs sm:p-8"
 			>
 				<h2 class="text-base font-bold text-slate-900">Data Permohonan & Invoice</h2>
 
@@ -151,9 +146,9 @@
 						class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:bg-white focus:outline-none"
 					>
 						<option value="" disabled>-- Pilih Permohonan Audit --</option>
-						{#each permohonanSiapTagih as item (item.id_daftar)}
+						{#each permohonanSiapTagih as item (item.id_permohonan)}
 							<option value={item.id_daftar}>
-								{item.id_daftar} - {item.nama_pu} ({item.skala_usaha})
+								{item.id_daftar} - {item.nama_pu}
 							</option>
 						{/each}
 					</select>
@@ -169,6 +164,7 @@
 						id="no_invoice"
 						name="no_invoice"
 						bind:value={noInvoiceInput}
+						placeholder="INV/LPH/03/2026/891"
 						required
 						class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:bg-white focus:outline-none"
 					/>
@@ -220,6 +216,7 @@
 										Jenis Transaksi
 									</label>
 									<select
+										id="jenis_transaksi_{item.id}"
 										bind:value={item.jenis_transaksi}
 										class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
 									>
@@ -238,6 +235,7 @@
 										Jumlah Uang (Rp)
 									</label>
 									<input
+										id="jumlah_uang_{item.id}"
 										type="number"
 										bind:value={item.jumlah_uang}
 										min="0"
@@ -265,7 +263,7 @@
 		<!-- RINGKASAN SIDEBAR -->
 		<div class="space-y-6 lg:col-span-5">
 			<div
-				class="sticky top-6 space-y-6 rounded-3xl border border-emerald-100 bg-emerald-50/40 p-6 shadow-xs"
+				class="sticky top-6 space-y-6 rounded-3xl border border-emerald-100 bg-emerald-50/40 p-6 shadow-2xs"
 			>
 				<h2 class="text-sm font-bold text-slate-900">Ringkasan Total Invoice</h2>
 

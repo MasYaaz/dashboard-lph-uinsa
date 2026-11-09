@@ -7,7 +7,6 @@
 		LayoutGrid,
 		Users,
 		Receipt,
-		BadgeCheck,
 		UserCog,
 		BookOpen,
 		ExternalLink,
@@ -76,14 +75,8 @@
 		{ name: 'Penugasan Tim', href: '/dashboard/penugasan', icon: Users, role: ['ADMINISTRASI'] },
 		{
 			name: 'Biaya Audit',
-			href: '/dashboard/keuangan/tagihan',
+			href: '/dashboard/tagihan',
 			icon: Receipt,
-			role: ['BENDAHARA']
-		},
-		{
-			name: 'Verifikasi Biaya',
-			href: '/dashboard/keuangan/konfirmasi',
-			icon: BadgeCheck,
 			role: ['BENDAHARA']
 		},
 		{

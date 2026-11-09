@@ -191,7 +191,7 @@ export const actions = {
 						pu.jumlah_outlet,
 						pu.alamat_outlet,
 						pu.jarak_dari_pusat_kota,
-						pu.nama_kontak_penyelia,
+						pu.kontak_penyelia,
 						COALESCE(p.kebutuhan_jumlah_auditor, 0) AS kebutuhan_auditor,
 						(
 							SELECT STRING_AGG(pf.nama_petugas || ' (' || pf.peran || ')', '; ')
@@ -213,7 +213,7 @@ export const actions = {
 					`"${r.jumlah_outlet}"`,
 					`"${r.alamat_outlet.replace(/"/g, '""')}"`,
 					`"${r.jarak_dari_pusat_kota}"`,
-					`"${r.nama_kontak_penyelia}"`,
+					`"${r.kontak_penyelia}"`,
 					`"${r.kebutuhan_auditor}"`,
 					`"${r.tim_petugas || 'Belum Ditugaskan'}"`,
 					`"${r.status_penugasan}"`

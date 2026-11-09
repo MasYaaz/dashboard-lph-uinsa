@@ -108,7 +108,7 @@ async function runMigration() {
 				jumlah_outlet INT DEFAULT 0,
 				alamat_outlet TEXT NOT NULL,
 				jarak_dari_pusat_kota NUMERIC(8,2) NOT NULL,
-				nama_kontak_penyelia VARCHAR(150) NOT NULL,
+				kontak_penyelia VARCHAR(30) NOT NULL,
 				created_by INT REFERENCES users(id_user),
 				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -137,18 +137,32 @@ async function runMigration() {
 				id_petugas INT REFERENCES petugas_field(id_petugas) ON DELETE RESTRICT
 			);
 
+			-- =============================================================================
+			-- REFACTOR: MENGUBAH KEUANGAN AUDIT MENJADI HEADER & DETAIL
+			-- =============================================================================
+
+			-- 1. Tabel Header Invoice/Tagihan
 			CREATE TABLE keuangan_audit (
-				id_keuangan SERIAL PRIMARY KEY,
-				id_permohonan INT REFERENCES permohonan_audit(id_permohonan) ON DELETE CASCADE,
-				no_invoice VARCHAR(100) NOT NULL,
-				jenis_transaksi jenis_transaksi_enum NOT NULL,
-				jumlah_uang NUMERIC(12,2) NOT NULL DEFAULT 0.00,
-				status_keuangan status_keuangan_enum DEFAULT 'DRAFT',
-				catatan_revisi TEXT,
-				created_by INT REFERENCES users(id_user),
-				verified_by INT REFERENCES users(id_user),
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        id_keuangan SERIAL PRIMARY KEY,
+        id_permohonan INT REFERENCES permohonan_audit(id_permohonan) ON DELETE CASCADE,
+        no_invoice VARCHAR(100) UNIQUE NOT NULL, -- Di-set UNIQUE agar tidak terduplikasi
+        total_tagihan NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+        status_keuangan status_keuangan_enum DEFAULT 'DRAFT',
+        catatan_revisi TEXT,
+        created_by INT REFERENCES users(id_user),
+        verified_by INT REFERENCES users(id_user),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			);
+
+			-- 2. Tabel Detail Rincian Item Pembayaran
+			CREATE TABLE detail_keuangan_audit (
+        id_detail_keuangan SERIAL PRIMARY KEY,
+        id_keuangan INT REFERENCES keuangan_audit(id_keuangan) ON DELETE CASCADE,
+        jenis_transaksi jenis_transaksi_enum NOT NULL,
+        keterangan VARCHAR(255), -- Opsional: Catatan per rincian biaya
+        jumlah_uang NUMERIC(12,2) NOT NULL DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 			);
 		`);
 

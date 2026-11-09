@@ -29,19 +29,16 @@ const connectionString =
 
 console.log('🔄 Connecting to PostgreSQL:', connectionString.replace(/:[^:@]+@/, ':****@'));
 
-const sql = postgres(connectionString, {
-	max: 1,
-	connect_timeout: 10,
-	onnotice: () => {}
-});
+const sql = postgres(connectionString, { max: 1, connect_timeout: 10, onnotice: () => {} });
 
 async function dropAllTables() {
 	let exitCode = 0;
 	try {
-		console.log('⚠️  Memulai penghapusan seluruh tabel dan tipe data di database...');
+		console.log('⚠️ Memulai penghapusan seluruh tabel dan tipe data di database...');
 
-		// Menggunakan sql.unsafe untuk mendukung multi-statement SQL sekaligus
+		// Multi-statement SQL DROP mendukung skema Header-Detail terbaru
 		await sql.unsafe(`
+			DROP TABLE IF EXISTS detail_keuangan_audit CASCADE;
 			DROP TABLE IF EXISTS keuangan_audit CASCADE;
 			DROP TABLE IF EXISTS detail_penugasan_petugas CASCADE;
 			DROP TABLE IF EXISTS penugasan CASCADE;
@@ -56,7 +53,7 @@ async function dropAllTables() {
 			DROP TYPE IF EXISTS role_login_enum CASCADE;
 		`);
 
-		console.log('✅ Seluruh tabel dan tipe ENUM berhasil dihapus dari database.');
+		console.log('✅ Seluruh tabel dan tipe ENUM berhasil dihapus secara bersih dari database.');
 	} catch (error: any) {
 		exitCode = 1;
 		console.error('\n❌ Gagal menghapus tabel dari database:');
