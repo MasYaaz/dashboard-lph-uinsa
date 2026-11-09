@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	const statusFilter = url.searchParams.get('status') || '';
 
 	try {
-		// 1. Query Statistik Ringkasan dari Tabel PostgreSQL Terbaru
+		// 1. Query Statistik Ringkasan (Integrasi Header keuangan_audit)
 		const statsRes = await sql<DashboardStatsRow[]>`
 			SELECT
 				COUNT(DISTINCT pu.id_daftar)::int AS total_pu,
@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			perlu_revisi: 0
 		};
 
-		// 2. Query Rekap Daftar Pelaku Usaha & Status
+		// 2. Query Rekap Daftar Pelaku Usaha & Total Tagihan Header
 		const querySearch = `%${search}%`;
 		const dataList = await sql<PelakuUsahaRekapRow[]>`
 			SELECT
@@ -57,11 +57,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 					JOIN penugasan p_sub ON dp.id_penugasan = p_sub.id_penugasan
 					WHERE p_sub.id_permohonan = pa.id_permohonan
 				) AS tim_auditor,
-				(
-					SELECT COALESCE(SUM(ka_sub.jumlah_uang), 0)
-					FROM keuangan_audit ka_sub
-					WHERE ka_sub.id_permohonan = pa.id_permohonan
-				) AS total_biaya_final,
+				ka.total_tagihan AS total_biaya_final,
 				p.status_penugasan,
 				ka.status_keuangan
 			FROM pelaku_usaha pu
@@ -119,19 +115,18 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 export const actions = {
 	exportExcel: async ({ locals }) => {
 		const userRole = locals.user?.role || 'ADMINISTRASI';
-
 		try {
 			let csvHeaders: string[] = [];
 			let rows: string[][] = [];
 
 			if (userRole === 'BENDAHARA') {
-				// EKSPOR KHUSUS BENDAHARA (Agregasi Tabel keuangan_audit & permohonan_audit)
+				// EKSPOR BENDAHARA: Mengambil data dari Header & Detail Keuangan
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',
-					'No Invoice Terakhir',
-					'Total Transaksi Keuangan',
-					'Total Nominal Uang (Rp)',
+					'No Invoice',
+					'Total Tagihan (Rp)',
+					'Jumlah Item Biaya',
 					'Status Keuangan'
 				];
 
@@ -139,37 +134,26 @@ export const actions = {
 					SELECT
 						pu.id_daftar,
 						pu.nama_pelaku_usaha,
-						COALESCE(
-							(SELECT ka_sub.no_invoice
-							 FROM keuangan_audit ka_sub
-							 WHERE ka_sub.id_permohonan = pa.id_permohonan
-							 ORDER BY ka_sub.created_at DESC LIMIT 1), '-'
-						) AS no_invoice,
-						COUNT(ka.id_keuangan) AS total_transaksi,
-						COALESCE(SUM(ka.jumlah_uang), 0) AS total_biaya_final,
-						COALESCE(
-							(SELECT ka_sub.status_keuangan::text
-							 FROM keuangan_audit ka_sub
-							 WHERE ka_sub.id_permohonan = pa.id_permohonan
-							 ORDER BY ka_sub.created_at DESC LIMIT 1), 'DRAFT'
-						) AS status_keuangan
+						ka.no_invoice,
+						ka.total_tagihan,
+						(SELECT COUNT(d.id_detail_keuangan) FROM detail_keuangan_audit d WHERE d.id_keuangan = ka.id_keuangan) AS total_item,
+						ka.status_keuangan
 					FROM pelaku_usaha pu
 					JOIN permohonan_audit pa ON pu.id_daftar = pa.id_daftar
-					LEFT JOIN keuangan_audit ka ON pa.id_permohonan = ka.id_permohonan
-					GROUP BY pu.id_daftar, pu.nama_pelaku_usaha, pa.id_permohonan, pa.tanggal_permohonan
-					ORDER BY pa.tanggal_permohonan DESC
+					JOIN keuangan_audit ka ON pa.id_permohonan = ka.id_permohonan
+					ORDER BY ka.created_at DESC
 				`;
 
 				rows = data.map((r) => [
 					`"${r.id_daftar}"`,
 					`"${r.nama_pelaku_usaha}"`,
 					`"${r.no_invoice}"`,
-					`"${r.total_transaksi}"`,
-					`"${r.total_biaya_final}"`,
+					`"${r.total_tagihan}"`,
+					`"${r.total_item}"`,
 					`"${r.status_keuangan}"`
 				]);
 			} else {
-				// EKSPOR KHUSUS STAF ADMINISTRASI
+				// EKSPOR STAF ADMINISTRASI: Menggunakan kontak_penyelia
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',
@@ -177,7 +161,7 @@ export const actions = {
 					'Jumlah Outlet',
 					'Alamat Outlet',
 					'Jarak dari Pusat Kota (km)',
-					'Nama Kontak Penyelia',
+					'Kontak Penyelia',
 					'Kebutuhan Auditor',
 					'Tim Petugas Field Assigned',
 					'Status Penugasan'
