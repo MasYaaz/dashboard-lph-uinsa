@@ -53,30 +53,13 @@
 </svelte:head>
 
 <div class="space-y-8">
-	<!-- Top Navigation & Action Header -->
+	<!-- Top Navigation Header -->
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold tracking-tight text-slate-900">Form Pelaku Usaha</h1>
 			<p class="mt-1 text-xs text-slate-500">
 				Daftarkan identitas usaha sebagai langkah awal proses pemeriksaan halal LPH.
 			</p>
-		</div>
-
-		<div class="flex items-center gap-3">
-			<a
-				href={resolve(`/dashboard`)}
-				class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-50"
-			>
-				Batal
-			</a>
-			<button
-				type="submit"
-				form="form-pelaku-usaha"
-				class="inline-flex h-10 items-center gap-2 rounded-full bg-[#059669] px-6 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857]"
-			>
-				<Save class="h-4 w-4" />
-				<span>Simpan Data</span>
-			</button>
 		</div>
 	</div>
 
@@ -130,8 +113,7 @@
 		<div>
 			<h2 class="text-base font-bold text-slate-900">Identitas pelaku usaha</h2>
 			<p class="text-xs text-slate-400">
-				Lengkapi seluruh kolom wajib (*). Data dapat diperbarui sewaktu-waktu oleh Staf
-				Administrasi.
+				Lengkapi seluruh kolom wajib (*). Data dapat diperbarui sewaktu-waktu oleh Staf Administrasi.
 			</p>
 		</div>
 
@@ -150,8 +132,7 @@
 							bind:value={idDaftarInput}
 							placeholder="REG-2026-XXXX"
 							required
-							class="w-full rounded-2xl border px-4 py-3 text-xs font-semibold transition-all focus:outline-none {form
-								?.fieldError?.id_daftar
+							class="w-full rounded-2xl border px-4 py-3 text-xs font-semibold transition-all focus:outline-none {form?.fieldError?.id_daftar
 								? 'border-rose-300 bg-rose-50/30 text-rose-900 focus:border-rose-500'
 								: 'border-slate-200 bg-white text-slate-900 focus:border-[#059669]'}"
 						/>
@@ -299,6 +280,23 @@
 					</p>
 				</div>
 			</div>
+
+			<!-- Action Buttons Footer -->
+			<div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+				<a
+					href={resolve(`/dashboard`)}
+					class="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-6 text-xs font-bold text-slate-700 shadow-2xs transition-all hover:bg-slate-50"
+				>
+					Batal
+				</a>
+				<button
+					type="submit"
+					class="inline-flex h-10 items-center gap-2 rounded-full bg-[#059669] px-6 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857]"
+				>
+					<Save class="h-4 w-4" />
+					<span>Simpan Data</span>
+				</button>
+			</div>
 		</form>
 	</div>
 
@@ -309,7 +307,6 @@
 				<h2 class="text-base font-bold text-slate-900">Daftar Pelaku Usaha Terdaftar</h2>
 				<p class="text-xs text-slate-400">Total {filteredList.length} Pelaku Usaha dalam sistem</p>
 			</div>
-
 			<div class="relative w-64">
 				<input
 					type="text"
@@ -320,7 +317,6 @@
 				<Search class="absolute top-2.5 right-3 h-4 w-4 text-slate-400" />
 			</div>
 		</div>
-
 		<div class="overflow-x-auto">
 			<table class="w-full border-collapse text-left">
 				<thead>
@@ -342,8 +338,7 @@
 							<td class="px-6 py-4 text-slate-600">
 								{item.jumlah_produk} Produk / {item.jumlah_outlet} Outlet
 							</td>
-							<td class="px-6 py-4 font-semibold text-slate-900">{item.jarak_dari_pusat_kota} km</td
-							>
+							<td class="px-6 py-4 font-semibold text-slate-900">{item.jarak_dari_pusat_kota} km</td>
 							<td class="px-6 py-4 text-slate-600">{item.nama_kontak_penyelia}</td>
 						</tr>
 					{:else}
