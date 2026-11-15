@@ -62,44 +62,5 @@ export const actions = {
 			console.error('Error toggle active petugas:', err);
 			return fail(500, { success: false, error: 'Gagal mengubah status keaktifan petugas.' });
 		}
-	},
-
-	// ACTION BARU: Hapus Data Petugas
-	hapus: async ({ request }) => {
-		const formData = await request.formData();
-		const id_petugas = formData.get('id_petugas')?.toString();
-
-		if (!id_petugas) {
-			return fail(400, { success: false, error: 'ID Petugas tidak valid.' });
-		}
-
-		try {
-			const targetId = parseInt(id_petugas);
-
-			// Cek apakah petugas sudah pernah ditugaskan dalam detail_penugasan_petugas
-			const isUsed = await sql`
-				SELECT id_detail FROM detail_penugasan_petugas WHERE id_petugas = ${targetId} LIMIT 1
-			`;
-
-			if (isUsed.length > 0) {
-				return fail(400, {
-					success: false,
-					error:
-						'Petugas tidak dapat dihapus karena sudah terhubung dengan riwayat penugasan audit. Gunakan opsi "Nonaktifkan".'
-				});
-			}
-
-			await sql`
-				DELETE FROM petugas_field WHERE id_petugas = ${targetId}
-			`;
-
-			return {
-				success: true,
-				message: 'Data petugas berhasil dihapus permanen dari sistem.'
-			};
-		} catch (err) {
-			console.error('Error delete petugas:', err);
-			return fail(500, { success: false, error: 'Gagal menghapus data petugas dari database.' });
-		}
 	}
 } satisfies Actions;

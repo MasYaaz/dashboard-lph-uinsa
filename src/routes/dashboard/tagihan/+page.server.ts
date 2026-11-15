@@ -16,7 +16,7 @@ export interface TagihanKeuanganItem {
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
-	if (user.role !== 'BENDAHARA' && user.role !== 'ADMINISTRASI') {
+	if (user.role !== 'BENDAHARA') {
 		throw redirect(303, '/dashboard');
 	}
 

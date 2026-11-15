@@ -14,37 +14,38 @@
 		"format": "prettier --write .",
 		"db:migrate": "bun run scripts/migrate.ts",
 		"db:seed": "bun run scripts/seed.ts",
-		"db:reset": "bun run scripts/reset.ts"
+		"db:reset": "bun run scripts/reset.ts",
+		"db:fresh": "bun run db:reset && bun run db:migrate && bun run db:seed"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@sveltejs/adapter-auto": "^8.0.0",
-		"@sveltejs/kit": "^3.1.1",
+		"@sveltejs/adapter-auto": "^8.0.1",
+		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.5",
-		"@types/node": "^24.19.2",
-		"eslint": "^10.14.0",
+		"@types/node": "^26.6.6",
+		"eslint": "^10.15.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.24.1",
 		"globals": "^17.14.0",
-		"prettier": "^3.9.10",
+		"prettier": "^3.10.1",
 		"prettier-plugin-svelte": "^4.1.1",
 		"prettier-plugin-tailwindcss": "^0.8.1",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"tailwindcss": "^4.3.5",
-		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.72.1",
-		"vite": "^8.3.6"
+		"typescript": "^7.0.2",
+		"typescript-eslint": "^8.72.2",
+		"vite": "^8.3.8"
 	},
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^1.70.0",
-		"@neondatabase/serverless": "^1.2.0",
+		"@lucide/svelte": "^1.73.0",
+		"@neondatabase/serverless": "^1.2.1",
 		"bcryptjs": "^3.0.3",
-		"postgres": "^4.1.0"
+		"postgres": "^4.1.1"
 	}
 }

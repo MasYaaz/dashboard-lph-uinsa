@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import type { PageData, ActionData } from './$types';
-	import { UserPlus, Search, CircleCheck, TriangleAlert, X, Pen, Trash } from '@lucide/svelte';
+	import { UserPlus, Search, CircleCheck, TriangleAlert, Pen } from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -11,9 +11,6 @@
 	let searchQuery = $state('');
 	let roleFilter = $state('ALL');
 	let statusFilter = $state('ALL');
-
-	// State Modal Hapus
-	let selectedDeletePetugas = $state<{ id: number; nama: string } | null>(null);
 
 	// Filtering Data
 	const filteredPetugas = $derived(
@@ -247,17 +244,6 @@
 										{item.is_active ? 'Nonaktifkan' : 'Aktifkan'}
 									</button>
 								</form>
-
-								<!-- Tombol Pemicu Modal Hapus -->
-								<button
-									type="button"
-									onclick={() =>
-										(selectedDeletePetugas = { id: item.id_petugas, nama: item.nama_petugas })}
-									class="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
-								>
-									<Trash class="h-3 w-3" />
-									<span>Hapus</span>
-								</button>
 							</td>
 						</tr>
 					{:else}
@@ -272,51 +258,3 @@
 		</div>
 	</div>
 </div>
-
-<!-- MODAL DIALOG KONFIRMASI HAPUS -->
-{#if selectedDeletePetugas}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs"
-	>
-		<div
-			class="w-full max-w-sm space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl"
-		>
-			<div class="flex items-center justify-between border-b border-slate-100 pb-3">
-				<h3 class="text-sm font-bold text-slate-900">Hapus Data Petugas?</h3>
-				<button
-					type="button"
-					onclick={() => (selectedDeletePetugas = null)}
-					class="rounded-full p-1 text-slate-400 hover:bg-slate-100"
-				>
-					<X class="h-4 w-4" />
-				</button>
-			</div>
-
-			<p class="text-xs leading-relaxed text-slate-600">
-				Apakah Anda yakin ingin menghapus petugas <strong class="text-slate-900"
-					>{selectedDeletePetugas.nama}</strong
-				>
-				(#{selectedDeletePetugas.id})? Tindakan ini tidak dapat dibatalkan.
-			</p>
-
-			<div class="flex items-center justify-end gap-3 pt-2">
-				<button
-					type="button"
-					onclick={() => (selectedDeletePetugas = null)}
-					class="h-9 rounded-full border border-slate-200 px-4 text-xs font-bold text-slate-600 hover:bg-slate-50"
-				>
-					Batal
-				</button>
-				<form method="POST" action="?/hapus">
-					<input type="hidden" name="id_petugas" value={selectedDeletePetugas.id} />
-					<button
-						type="submit"
-						class="h-9 rounded-full bg-rose-600 px-5 text-xs font-bold text-white shadow-sm hover:bg-rose-700"
-					>
-						Ya, Hapus
-					</button>
-				</form>
-			</div>
-		</div>
-	</div>
-{/if}
