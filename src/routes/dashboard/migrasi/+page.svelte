@@ -30,13 +30,19 @@
 
 	$effect(() => {
 		if (form?.previewSuccess && form?.rows && form?.headers) {
+			isPreviewing = false;
 			editableHeaders = [...form.headers];
 			editableRows = JSON.parse(JSON.stringify(form.rows));
+		}
+		if (form?.error) {
+			isPreviewing = false;
+			isImporting = false;
 		}
 	});
 
 	$effect(() => {
 		if (form?.success && form?.importedTable) {
+			isImporting = false;
 			refreshAll();
 			editableRows = [];
 			selectedFiles = [];
@@ -63,6 +69,29 @@
 		{ value: 'keuangan_audit', label: '5. Keuangan Audit (keuangan_audit)' }
 	];
 
+	const opsiStatusPenugasan = [
+		{ value: 'PENDING', label: 'PENDING (Menunggu)' },
+		{ value: 'ASSIGNED', label: 'ASSIGNED (Ditugaskan)' },
+		{ value: 'REASSIGNED', label: 'REASSIGNED (Penugasan Ulang)' }
+	];
+
+	const opsiStatusKeuangan = [
+		{ value: 'DRAFT', label: 'DRAFT (Konsep)' },
+		{ value: 'SIAP_VERIFIKASI', label: 'SIAP_VERIFIKASI' },
+		{ value: 'DITERIMA', label: 'DITERIMA (Lunas)' },
+		{ value: 'REVISI', label: 'REVISI (Perlu Perbaikan)' }
+	];
+
+	const opsiJenisTransaksi = [
+		{ value: 'TRANSPORT_TALANGAN', label: 'Transport Talangan' },
+		{ value: 'UH_PENGINAPAN', label: 'UH & Penginapan' },
+		{ value: 'BIAYA_LPH', label: 'Biaya LPH' },
+		{ value: 'INPUT_SISTEM', label: 'Input Sistem' },
+		{ value: 'TENTATIVE_LAPANGAN', label: 'Tentative Lapangan' },
+		{ value: 'TAGIHAN_FINAL', label: 'Tagihan Final' },
+		{ value: 'BIAYA_LAIN', label: 'Biaya Lain' }
+	];
+
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files) {
@@ -76,7 +105,12 @@
 
 	function tambahBaris() {
 		const barisBaru: Record<string, string> = { _row_idx: String(editableRows.length + 2) };
-		editableHeaders.forEach((h) => (barisBaru[h] = ''));
+		editableHeaders.forEach((h) => {
+			if (h === 'status_penugasan') barisBaru[h] = 'ASSIGNED';
+			else if (h === 'status_keuangan') barisBaru[h] = 'SIAP_VERIFIKASI';
+			else if (h === 'jenis_transaksi') barisBaru[h] = 'BIAYA_LAIN';
+			else barisBaru[h] = '';
+		});
 		editableRows = [...editableRows, barisBaru];
 	}
 </script>
@@ -328,6 +362,36 @@
 													<option value={String(perm.id_permohonan)}>
 														ID #{perm.id_permohonan} - {perm.nama_pelaku_usaha} ({perm.id_daftar})
 													</option>
+												{/each}
+											</select>
+										{:else if header === 'status_penugasan'}
+											<!-- Dropdown ENUM Status Penugasan -->
+											<select
+												bind:value={row[header]}
+												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
+											>
+												{#each opsiStatusPenugasan as opt (opt.value)}
+													<option value={opt.value}>{opt.label}</option>
+												{/each}
+											</select>
+										{:else if header === 'status_keuangan'}
+											<!-- Dropdown ENUM Status Keuangan -->
+											<select
+												bind:value={row[header]}
+												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
+											>
+												{#each opsiStatusKeuangan as opt (opt.value)}
+													<option value={opt.value}>{opt.label}</option>
+												{/each}
+											</select>
+										{:else if header === 'jenis_transaksi'}
+											<!-- Dropdown ENUM Jenis Transaksi -->
+											<select
+												bind:value={row[header]}
+												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#059669] focus:outline-none"
+											>
+												{#each opsiJenisTransaksi as opt (opt.value)}
+													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</select>
 										{:else}

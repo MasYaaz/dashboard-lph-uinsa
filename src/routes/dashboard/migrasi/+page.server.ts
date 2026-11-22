@@ -81,6 +81,44 @@ function parseCSVLine(line: string): string[] {
 	return result;
 }
 
+function normalizeEnumValue(header: string, rawValue: string): string {
+	const clean = rawValue
+		.trim()
+		.toUpperCase()
+		.replace(/[\s\-&/]+/g, '_');
+
+	if (header === 'status_penugasan') {
+		if (['PENDING', 'MENUNGGU', 'BELUM'].includes(clean)) return 'PENDING';
+		if (['REASSIGNED', 'GANTI', 'ULANG', 'PENUGASAN_ULANG'].includes(clean)) return 'REASSIGNED';
+		if (['ASSIGNED', 'DITUGASKAN', 'AKTIF', 'SELESAI'].includes(clean)) return 'ASSIGNED';
+		return clean || 'ASSIGNED';
+	}
+
+	if (header === 'status_keuangan') {
+		if (['DRAFT', 'KONSEP'].includes(clean)) return 'DRAFT';
+		if (['DITERIMA', 'LUNAS', 'VERIFIED', 'TERVERIFIKASI', 'SELESAI', 'PAID'].includes(clean))
+			return 'DITERIMA';
+		if (['REVISI', 'PERBAIKAN', 'DITOLAK', 'REJECTED'].includes(clean)) return 'REVISI';
+		if (['SIAP_VERIFIKASI', 'MENUNGGU', 'PENDING', 'DIAJUKAN', 'REVIEW'].includes(clean))
+			return 'SIAP_VERIFIKASI';
+		return clean || 'SIAP_VERIFIKASI';
+	}
+
+	if (header === 'jenis_transaksi') {
+		if (clean.includes('TRANSPORT')) return 'TRANSPORT_TALANGAN';
+		if (clean.includes('UH') || clean.includes('PENGINAPAN') || clean.includes('HARIAN'))
+			return 'UH_PENGINAPAN';
+		if (clean.includes('LPH')) return 'BIAYA_LPH';
+		if (clean.includes('SISTEM') || clean.includes('INPUT')) return 'INPUT_SISTEM';
+		if (clean.includes('TENTATIVE') || clean.includes('LAPANGAN')) return 'TENTATIVE_LAPANGAN';
+		if (clean.includes('FINAL') || clean.includes('PAKET')) return 'TAGIHAN_FINAL';
+		if (clean.includes('LAIN')) return 'BIAYA_LAIN';
+		return clean || 'BIAYA_LAIN';
+	}
+
+	return rawValue.trim();
+}
+
 export const actions = {
 	previewFile: async ({ request }) => {
 		const formData = await request.formData();
@@ -105,7 +143,8 @@ export const actions = {
 				const values = parseCSVLine(line);
 				const rowObj: Record<string, string> = { _row_idx: String(idx + 2) };
 				headers.forEach((header, colIdx) => {
-					rowObj[header] = values[colIdx] ?? '';
+					const rawVal = values[colIdx] ?? '';
+					rowObj[header] = normalizeEnumValue(header, rawVal);
 				});
 				return rowObj;
 			});
@@ -148,6 +187,7 @@ export const actions = {
 				for (const row of rows) {
 					try {
 						if (targetTable === 'pelaku_usaha') {
+							const kontakPenyelia = (row.kontak_penyelia || row.nama_kontak_penyelia || '').trim();
 							await tx`
 								INSERT INTO pelaku_usaha (
 									id_daftar, nama_pelaku_usaha, jumlah_produk, jumlah_outlet,
@@ -155,7 +195,7 @@ export const actions = {
 								) VALUES (
 									${row.id_daftar}, ${row.nama_pelaku_usaha}, ${parseInt(row.jumlah_produk || '0')},
 									${parseInt(row.jumlah_outlet || '0')}, ${row.alamat_outlet},
-									${parseFloat(row.jarak_dari_pusat_kota || '0')}, ${row.kontak_penyelia}, ${currentUserId}
+									${parseFloat(row.jarak_dari_pusat_kota || '0')}, ${kontakPenyelia}, ${currentUserId}
 								)
 								ON CONFLICT (id_daftar) DO UPDATE SET
 									nama_pelaku_usaha = EXCLUDED.nama_pelaku_usaha,
@@ -171,11 +211,15 @@ export const actions = {
 								VALUES (${row.id_daftar}, ${row.tanggal_permohonan || new Date().toISOString().split('T')[0]})
 							`;
 						} else if (targetTable === 'penugasan') {
+							const statusPenugasan = normalizeEnumValue(
+								'status_penugasan',
+								row.status_penugasan || 'ASSIGNED'
+							);
 							await tx`
 								INSERT INTO penugasan (id_permohonan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by)
 								VALUES (
 									${parseInt(row.id_permohonan)}, ${parseInt(row.kebutuhan_jumlah_auditor || '1')},
-									${row.status_penugasan || 'ASSIGNED'}::status_penugasan_enum, ${currentUserId}
+									${statusPenugasan}::status_penugasan_enum, ${currentUserId}
 								)
 							`;
 						} else if (targetTable === 'detail_penugasan_petugas') {
@@ -212,7 +256,6 @@ export const actions = {
 								VALUES (${targetPenugasanId}, ${idPetugasNum})
 							`;
 						} else if (targetTable === 'keuangan_audit') {
-							// STEP 5 REFACTOR: Impor Keuangan Audit ke Header (`keuangan_audit`) & Detail (`detail_keuangan_audit`)
 							let targetPermohonanId = parseInt(row.id_permohonan || '0');
 
 							if (!targetPermohonanId && row.id_daftar) {
@@ -231,6 +274,14 @@ export const actions = {
 							}
 
 							const nominalUang = parseFloat(row.jumlah_uang || '0');
+							const statusKeuangan = normalizeEnumValue(
+								'status_keuangan',
+								row.status_keuangan || 'SIAP_VERIFIKASI'
+							);
+							const jenisTransaksi = normalizeEnumValue(
+								'jenis_transaksi',
+								row.jenis_transaksi || 'BIAYA_LAIN'
+							);
 
 							// 1. Insert / Upsert Header Invoice
 							const resHeader = await tx`
@@ -238,7 +289,7 @@ export const actions = {
 									id_permohonan, no_invoice, total_tagihan, status_keuangan, created_by
 								) VALUES (
 									${targetPermohonanId}, ${row.no_invoice}, ${nominalUang},
-									${row.status_keuangan || 'SIAP_VERIFIKASI'}::status_keuangan_enum, ${currentUserId}
+									${statusKeuangan}::status_keuangan_enum, ${currentUserId}
 								)
 								ON CONFLICT (no_invoice) DO UPDATE SET
 									total_tagihan = keuangan_audit.total_tagihan + EXCLUDED.total_tagihan,
@@ -254,7 +305,7 @@ export const actions = {
 								INSERT INTO detail_keuangan_audit (
 									id_keuangan, jenis_transaksi, jumlah_uang, keterangan
 								) VALUES (
-									${idKeuangan}, ${row.jenis_transaksi}::jenis_transaksi_enum, ${nominalUang}, ${keteranganFinal}
+									${idKeuangan}, ${jenisTransaksi}::jenis_transaksi_enum, ${nominalUang}, ${keteranganFinal}
 								);
 							`;
 						}

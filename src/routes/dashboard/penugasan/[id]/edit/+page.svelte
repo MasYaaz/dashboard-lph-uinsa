@@ -16,12 +16,18 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	const detail = $derived(data.penugasanDetail);
-	const auditorList = $derived(data.auditorList);
-	const dewanSyariahList = $derived(data.dewanSyariahList);
+	const auditorList = $derived(data.auditorList ?? []);
+	const dewanSyariahList = $derived(data.dewanSyariahList ?? []);
 
-	// State Form lokal dinamis
-	let selectedAuditors = $derived<string[]>([...data.existingAuditorIds]);
-	let selectedDewanSyariah = $derived<string[]>([...data.existingDewanIds]);
+	// Gunakan $state (bukan $derived) agar array bisa dimutasi & di-bind dengan aman di Svelte 5
+	let selectedAuditors = $state<string[]>(['']);
+	let selectedDewanSyariah = $state<string[]>(['']);
+
+	// Sinkronkan data awal dari server saat load / navigasi antar ID
+	$effect(() => {
+		selectedAuditors = (data.existingAuditorIds ?? ['']).map(String);
+		selectedDewanSyariah = (data.existingDewanIds ?? ['']).map(String);
+	});
 
 	// Hitung total personil tim valid yang dipilih
 	const totalTimTerpilih = $derived(
@@ -50,7 +56,7 @@
 </script>
 
 <svelte:head>
-	<title>Edit Penugasan Tim #{detail.id_penugasan} - SIM LPH</title>
+	<title>Edit Penugasan Tim - SIM LPH</title>
 </svelte:head>
 
 <div class="mx-auto max-w-5xl space-y-8">
@@ -65,11 +71,11 @@
 				<ArrowLeft class="h-4 w-4" />
 			</a>
 			<div>
-				<h1 class="text-2xl font-bold tracking-tight text-slate-900">
-					Edit Penugasan Tim (#{detail.id_penugasan})
-				</h1>
+				<h1 class="text-2xl font-bold tracking-tight text-slate-900">Edit Penugasan Tim</h1>
 				<p class="mt-1 text-xs text-slate-500">
-					Perbarui alokasi Auditor Field dan Dewan Syariah untuk permohonan {detail.id_daftar}.
+					Perbarui alokasi Auditor Field dan Dewan Syariah untuk permohonan <strong
+						>{detail.id_daftar}</strong
+					>.
 				</p>
 			</div>
 		</div>
@@ -166,16 +172,18 @@
 									required
 									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
 								>
-									<option value="" disabled
-										>-- Pilih Auditor {idx === 0 ? '(Utama)' : `Anggota #${idx}`} --</option
-									>
+									<option value="" disabled>
+										-- Pilih Auditor {idx === 0 ? '(Utama)' : `Anggota #${idx}`} --
+									</option>
 									{#each auditorList as a (a.id_petugas)}
-										{#if !selectedAuditors.includes(String(a.id_petugas)) || auditorId === String(a.id_petugas)}
-											<option value={a.id_petugas}>{a.nama_petugas} (Auditor)</option>
+										{@const strId = String(a.id_petugas)}
+										{#if !selectedAuditors.includes(strId) || auditorId === strId}
+											<option value={strId}>{a.nama_petugas} (Auditor)</option>
 										{/if}
 									{/each}
 								</select>
 							</div>
+
 							{#if selectedAuditors.length > 1}
 								<button
 									type="button"
@@ -222,12 +230,14 @@
 								>
 									<option value="" disabled>-- Pilih Dewan Syariah #{idx + 1} --</option>
 									{#each dewanSyariahList as d (d.id_petugas)}
-										{#if !selectedDewanSyariah.includes(String(d.id_petugas)) || dewanId === String(d.id_petugas)}
-											<option value={d.id_petugas}>{d.nama_petugas} (Dewan Syariah)</option>
+										{@const strId = String(d.id_petugas)}
+										{#if !selectedDewanSyariah.includes(strId) || dewanId === strId}
+											<option value={strId}>{d.nama_petugas} (Dewan Syariah)</option>
 										{/if}
 									{/each}
 								</select>
 							</div>
+
 							{#if selectedDewanSyariah.length > 1}
 								<button
 									type="button"
