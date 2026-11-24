@@ -3,6 +3,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { PelakuUsaha } from '#lib/types.ts';
 
+/** Memuat daftar pelaku usaha untuk pengguna administrasi. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -42,6 +43,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Menghapus pelaku usaha beserta permohonan, penugasan, dan tagihannya. */
 	delete: async ({ request }) => {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();

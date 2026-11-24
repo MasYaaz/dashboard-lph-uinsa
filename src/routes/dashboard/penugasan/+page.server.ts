@@ -11,6 +11,7 @@ export interface RiwayatPenugasanItem {
 	tim_petugas: string;
 }
 
+/** Memuat riwayat penugasan beserta daftar petugas yang dialokasikan. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -65,6 +66,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Menghapus penugasan dan seluruh relasi petugasnya secara atomik. */
 	delete: async ({ request }) => {
 		const formData = await request.formData();
 		const id_penugasan = formData.get('id_penugasan')?.toString().trim();

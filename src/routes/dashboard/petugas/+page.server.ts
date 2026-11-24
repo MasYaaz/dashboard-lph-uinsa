@@ -3,6 +3,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { PetugasField, PeranPetugas } from '#lib/types.ts';
 
+/** Memuat daftar petugas untuk pengguna administrasi. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 
@@ -38,6 +39,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Membalik status aktif petugas yang dipilih. */
 	toggleActive: async ({ request }) => {
 		const formData = await request.formData();
 		const id_petugas = formData.get('id_petugas')?.toString();

@@ -3,6 +3,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { PelakuUsaha } from '#lib/types.ts';
 
+/** Memuat detail pelaku usaha berdasarkan ID daftar setelah memeriksa hak akses. */
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -50,6 +51,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions = {
+	/** Menyimpan perubahan informasi dan cakupan lokasi pelaku usaha. */
 	update: async ({ request, params }) => {
 		const idDaftar = params.id;
 		const formData = await request.formData();

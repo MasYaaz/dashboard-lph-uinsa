@@ -22,6 +22,7 @@
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
+	// Menunggu navigasi selesai sebelum menutup transisi tampilan agar perpindahan halaman tetap halus.
 	onNavigate((navigation) => {
 		if (!document.startViewTransition) return;
 

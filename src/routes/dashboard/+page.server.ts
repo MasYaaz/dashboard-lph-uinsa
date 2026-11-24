@@ -19,6 +19,7 @@ interface PelakuUsahaRekapRow {
 	status_keuangan: string | null;
 }
 
+/** Memuat statistik dan daftar pelaku usaha sesuai pencarian serta filter status. */
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { user } = await parent();
 	const search = url.searchParams.get('q') || '';
@@ -124,6 +125,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 };
 
 export const actions = {
+	/** Membuat laporan CSV dengan kolom yang disesuaikan untuk peran pengguna. */
 	exportExcel: async ({ locals }) => {
 		const userRole = locals.user?.role || 'ADMINISTRASI';
 		try {

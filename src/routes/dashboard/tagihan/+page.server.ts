@@ -14,6 +14,7 @@ export interface TagihanKeuanganItem {
 	items: DetailKeuanganAudit[];
 }
 
+/** Memuat invoice beserta rincian item biaya untuk halaman bendahara. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'BENDAHARA') {
@@ -99,6 +100,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Menandai invoice sebagai diterima dan mencatat pengguna yang memverifikasi. */
 	konfirmasiPembayaran: async ({ request, cookies, locals }) => {
 		const formData = await request.formData();
 		const id_keuangan = formData.get('id_keuangan')?.toString().trim();
@@ -138,6 +140,7 @@ export const actions = {
 		}
 	},
 
+	/** Menghapus invoice; rincian item ikut terhapus melalui relasi cascade. */
 	hapusTagihan: async ({ request }) => {
 		const formData = await request.formData();
 		const id_keuangan = formData.get('id_keuangan')?.toString().trim();

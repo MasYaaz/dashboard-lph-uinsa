@@ -14,6 +14,7 @@ export interface PermohonanRef {
 	nama_pelaku_usaha: string;
 }
 
+/** Memuat daftar petugas dan permohonan yang menjadi referensi proses migrasi. */
 export const load: PageServerLoad = async ({ parent }) => {
 	await parent();
 
@@ -51,6 +52,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 	}
 };
 
+/** Memisahkan kolom CSV tanpa memecah koma yang berada di dalam tanda kutip. */
 function parseCSVLine(line: string): string[] {
 	const result: string[] = [];
 	let current = '';
@@ -76,6 +78,7 @@ function parseCSVLine(line: string): string[] {
 	return result;
 }
 
+/** Mengubah variasi teks impor menjadi nilai enum yang dikenali aplikasi. */
 function normalizeEnumValue(header: string, rawValue: string): string {
 	const clean = rawValue
 		.trim()
@@ -115,6 +118,7 @@ function normalizeEnumValue(header: string, rawValue: string): string {
 }
 
 export const actions = {
+	/** Membaca CSV, menormalkan nilainya, lalu mengirim baris untuk ditinjau. */
 	previewFile: async ({ request }) => {
 		const formData = await request.formData();
 		const targetTable = formData.get('target_table')?.toString().trim();
@@ -185,6 +189,7 @@ export const actions = {
 		}
 	},
 
+	/** Menyimpan baris hasil pratinjau ke tabel target dalam satu transaksi. */
 	executeImport: async ({ request, locals }) => {
 		const formData = await request.formData();
 		const targetTable = formData.get('target_table')?.toString().trim();

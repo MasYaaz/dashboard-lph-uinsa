@@ -18,6 +18,7 @@ export interface ItemTagihanExisting {
 	catatan?: string;
 }
 
+/** Memuat invoice dan rincian biaya yang masih dapat diedit. */
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'BENDAHARA' && user.role !== 'ADMINISTRASI') {
@@ -80,6 +81,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions = {
+	/** Memperbarui total invoice dan mengganti seluruh rincian biayanya. */
 	updateTagihan: async ({ request, params }) => {
 		const idKeuangan = parseInt(params.id);
 		const formData = await request.formData();

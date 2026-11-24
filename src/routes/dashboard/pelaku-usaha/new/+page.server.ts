@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sql } from '#lib/server/db.ts';
 
+/** Menghitung ID daftar yang disarankan untuk pendaftaran baru. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -19,6 +20,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Memvalidasi dan menyimpan data pelaku usaha beserta permohonan auditnya. */
 	tambah: async ({ request, cookies, locals }) => {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();

@@ -23,12 +23,14 @@
 	let isCalculatingDistance = $state(false);
 	let distanceStatus = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
+	/** Membuka rute Google Maps dari kampus ke alamat outlet yang diisi. */
 	function bukaGmapsRoute() {
 		const asal = encodeURIComponent('UIN Sunan Ampel Surabaya Kampus 1');
 		const tujuan = encodeURIComponent(alamatInput || 'Surabaya');
 		window.open(`https://www.google.com/maps/dir/${asal}/${tujuan}`, '_blank');
 	}
 
+	/** Meminta estimasi jarak dari API dan menampilkan status hasilnya pada formulir. */
 	async function hitungJarakOtomatis() {
 		const alamatBersih = alamatInput.trim();
 		if (!alamatBersih) {

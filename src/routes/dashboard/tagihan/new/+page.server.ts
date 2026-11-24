@@ -16,6 +16,7 @@ interface ItemTransaksiInput {
 	catatan?: string;
 }
 
+/** Memuat permohonan audit yang belum memiliki invoice untuk diterbitkan. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'BENDAHARA' && user.role !== 'ADMINISTRASI') {
@@ -51,6 +52,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Membuat header invoice dan rincian biayanya dalam satu transaksi. */
 	terbitkanTagihan: async ({ request, cookies, locals }) => {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();

@@ -52,6 +52,7 @@
 		})
 	);
 
+	/** Memformat nominal sebagai mata uang Rupiah tanpa angka desimal. */
 	function formatRupiah(amount: number): string {
 		return new Intl.NumberFormat('id-ID', {
 			style: 'currency',

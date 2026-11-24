@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { PeranPetugas } from '#lib/types.ts';
 
+/** Membatasi akses halaman tambah petugas untuk pengguna administrasi. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') throw redirect(303, '/dashboard');
@@ -10,6 +11,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Menyimpan petugas baru sebagai petugas aktif. */
 	default: async ({ request }) => {
 		const formData = await request.formData();
 		const nama_petugas = formData.get('nama_petugas')?.toString().trim();

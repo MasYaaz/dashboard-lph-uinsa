@@ -5,6 +5,7 @@ import type { RequestHandler } from './$types';
 const UINSA_LAT = -7.32258;
 const UINSA_LON = 112.73407;
 
+/** Menyiapkan variasi alamat dengan spasi yang dirapikan dan nomor detail dihapus. */
 function bersihkanAlamat(raw: string): string[] {
 	// Normalisasi spasi setelah Jl. (misal "Jl.Kemlaten" -> "Jl. Kemlaten")
 	const spasiRapih = raw.replace(/\b(jl|jln)\.?\s*/gi, 'Jalan ').trim();
@@ -27,6 +28,7 @@ function bersihkanAlamat(raw: string): string[] {
 	return Array.from(kandidat);
 }
 
+/** Mencari koordinat melalui Photon dan mencoba Nominatim jika Photon gagal. */
 async function cariKoordinat(
 	query: string
 ): Promise<{ lat: number; lon: number; label: string } | null> {
@@ -87,6 +89,7 @@ async function cariKoordinat(
 	return null;
 }
 
+/** Menghitung jarak jalan dari alamat outlet ke UINSA Kampus 1, dengan estimasi sebagai fallback. */
 export const GET: RequestHandler = async ({ url }) => {
 	const alamat = url.searchParams.get('alamat')?.trim();
 

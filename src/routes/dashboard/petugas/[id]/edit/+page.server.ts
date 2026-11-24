@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { PetugasField, PeranPetugas } from '#lib/types.ts';
 
+/** Memuat data petugas yang akan diedit setelah memeriksa hak akses. */
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') throw redirect(303, '/dashboard');
@@ -21,6 +22,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions = {
+	/** Menyimpan perubahan nama, peran, dan kontak petugas. */
 	default: async ({ request, params }) => {
 		const targetId = parseInt(params.id);
 		const formData = await request.formData();

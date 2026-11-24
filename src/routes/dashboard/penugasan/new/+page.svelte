@@ -43,20 +43,24 @@
 		selectedAuditors.filter(Boolean).length + selectedDewanSyariah.filter(Boolean).length
 	);
 
+	/** Menambahkan slot auditor kosong ke formulir penugasan. */
 	function tambahAuditor() {
 		selectedAuditors = [...selectedAuditors, ''];
 	}
 
+	/** Menghapus slot auditor tanpa membiarkan daftar menjadi kosong. */
 	function hapusAuditor(index: number) {
 		if (selectedAuditors.length > 1) {
 			selectedAuditors = selectedAuditors.filter((_, i) => i !== index);
 		}
 	}
 
+	/** Menambahkan slot dewan syariah kosong ke formulir penugasan. */
 	function tambahDewanSyariah() {
 		selectedDewanSyariah = [...selectedDewanSyariah, ''];
 	}
 
+	/** Menghapus slot dewan syariah tanpa membiarkan daftar menjadi kosong. */
 	function hapusDewanSyariah(index: number) {
 		if (selectedDewanSyariah.length > 1) {
 			selectedDewanSyariah = selectedDewanSyariah.filter((_, i) => i !== index);

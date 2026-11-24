@@ -36,6 +36,7 @@
 		}
 	});
 
+	/** Memformat nominal sebagai Rupiah, atau tanda pisah saat nilainya belum tersedia. */
 	function formatRupiah(amount: number | null): string {
 		if (amount === null || amount === undefined) return '—';
 		return new Intl.NumberFormat('id-ID', {

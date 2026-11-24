@@ -3,6 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import { sql } from '#lib/server/db.ts';
 import type { UserResponse } from '#lib/types.ts';
 
+/** Memastikan pengguna memiliki sesi aktif sebelum merender halaman dashboard. */
 export const load: LayoutServerLoad = async ({ cookies }) => {
 	const userId = cookies.get('session_user_id');
 

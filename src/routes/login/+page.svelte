@@ -70,6 +70,7 @@
 								autocomplete="current-password"
 								class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 py-3 pr-11 pl-4 text-xs text-slate-900 transition-all placeholder:text-slate-400 focus:border-[#059669] focus:bg-white focus:ring-2 focus:ring-[#059669]/20 focus:outline-none sm:text-sm"
 							/>
+							<!-- Mengubah visibilitas kata sandi tanpa mengubah nilai yang dimasukkan. -->
 							<button
 								type="button"
 								onclick={() => (showPassword = !showPassword)}

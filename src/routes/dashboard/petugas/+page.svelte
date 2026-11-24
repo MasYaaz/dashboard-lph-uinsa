@@ -34,6 +34,7 @@
 		petugasList.filter((p) => p.peran === 'DEWAN_SYARIAH' && p.is_active).length
 	);
 
+	/** Mengambil maksimal dua inisial untuk identitas ringkas petugas. */
 	function getInitials(name: string): string {
 		if (!name) return '??';
 		return name
@@ -44,6 +45,7 @@
 			.toUpperCase();
 	}
 
+	/** Mengembalikan pencarian, filter peran, dan filter status ke nilai awal. */
 	function resetFilter() {
 		searchQuery = '';
 		roleFilter = 'ALL';

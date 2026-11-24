@@ -21,7 +21,7 @@ const neonSql = isNeon ? neon(connectionString) : null;
 
 export type CustomSql = postgres.Sql;
 
-// Base SQL Function
+// Menyesuaikan query template agar Neon HTTP dapat dipakai lewat antarmuka SQL yang sama.
 const baseSqlFunction = isNeon
 	? (async function <T = GenericRow[]>(strings: TemplateStringsArray, ...values: SqlRowValue[]) {
 			const rows = await neonSql!(strings, ...values);
@@ -59,6 +59,7 @@ export const sql = sqlProxy;
 let pgAvailableCache: { ok: boolean; checkedAt: number } | null = null;
 const PG_CACHE_TTL_MS = 15_000;
 
+/** Memeriksa koneksi database dan menyimpan hasilnya selama 15 detik. */
 export async function checkDbConnection(): Promise<{ ok: boolean; message?: string }> {
 	const now = Date.now();
 	if (pgAvailableCache && now - pgAvailableCache.checkedAt < PG_CACHE_TTL_MS) {
@@ -76,6 +77,7 @@ export async function checkDbConnection(): Promise<{ ok: boolean; message?: stri
 	}
 }
 
+/** Memberi status ketersediaan PostgreSQL tanpa mengekspos detail error. */
 export async function isPostgresAvailable(): Promise<boolean> {
 	const res = await checkDbConnection();
 	return res.ok;

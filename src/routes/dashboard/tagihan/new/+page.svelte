@@ -48,6 +48,7 @@
 		}
 	});
 
+	/** Menambahkan baris rincian biaya kosong ke invoice baru. */
 	function tambahItem() {
 		itemsTransaksi = [
 			...itemsTransaksi,
@@ -55,12 +56,14 @@
 		];
 	}
 
+	/** Menghapus baris rincian jika masih ada item lain yang tersisa. */
 	function hapusItem(id: string) {
 		if (itemsTransaksi.length > 1) {
 			itemsTransaksi = itemsTransaksi.filter((item) => item.id !== id);
 		}
 	}
 
+	/** Memformat nominal sebagai mata uang Rupiah tanpa angka desimal. */
 	function formatRupiah(amount: number): string {
 		return new Intl.NumberFormat('id-ID', {
 			style: 'currency',
@@ -69,6 +72,7 @@
 		}).format(amount || 0);
 	}
 
+	/** Mengambil label tampilan untuk jenis transaksi yang dipilih. */
 	function getLabelTransaksi(val: string): string {
 		return opsiJenisTransaksi.find((o) => o.value === val)?.label ?? val;
 	}

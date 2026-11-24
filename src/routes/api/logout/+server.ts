@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
+/** Menghapus cookie sesi pengguna lalu mengarahkan ke halaman login. */
 export const POST: RequestHandler = async ({ cookies }) => {
 	// Bersihkan cookie sesi
 	cookies.delete('session_user_id', { path: '/' });

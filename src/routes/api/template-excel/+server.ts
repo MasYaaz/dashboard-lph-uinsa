@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 
+/** Menghasilkan file CSV contoh berdasarkan tabel migrasi yang diminta. */
 export const GET: RequestHandler = async ({ url }) => {
 	const table = url.searchParams.get('table') || 'pelaku_usaha_penugasan';
 

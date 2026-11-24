@@ -14,6 +14,7 @@ export interface PermohonanPendingItem {
 	tanggal_permohonan: string;
 }
 
+/** Memuat permohonan yang belum ditugaskan dan petugas yang masih aktif. */
 export const load: PageServerLoad = async ({ parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -78,6 +79,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions = {
+	/** Membuat penugasan dan menyimpan auditor serta dewan syariah terpilih. */
 	tugaskan: async ({ request, cookies, locals }) => {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();

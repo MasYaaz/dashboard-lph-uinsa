@@ -16,6 +16,7 @@ export interface PermohonanDetailItem {
 	tanggal_penugasan: string; // Format YYYY-MM-DD untuk <input type="date">
 }
 
+/** Memuat detail penugasan, daftar petugas, dan alokasi yang sudah tersimpan. */
 export const load: PageServerLoad = async ({ params, parent }) => {
 	const { user } = await parent();
 	if (user.role !== 'ADMINISTRASI') {
@@ -116,6 +117,7 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 };
 
 export const actions = {
+	/** Memperbarui tanggal dan mengganti alokasi petugas dalam satu transaksi. */
 	update: async ({ request, params }) => {
 		const idPenugasan = parseInt(params.id);
 		const formData = await request.formData();

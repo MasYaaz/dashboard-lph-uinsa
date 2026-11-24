@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import type { User } from '#lib/types.ts';
 
 // 1. Jika pengguna sudah memiliki session cookie, langsung lempar ke dashboard
+/** Mengalihkan pengguna yang sudah memiliki sesi ke dashboard. */
 export const load: PageServerLoad = async ({ cookies }) => {
 	const userId = cookies.get('session_user_id');
 	if (userId) {
@@ -15,6 +16,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 // 2. Server Action untuk memproses form Login
 export const actions = {
+	/** Memverifikasi kredensial, mencatat waktu login, lalu membuat cookie sesi. */
 	default: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const username = formData.get('username')?.toString().trim();

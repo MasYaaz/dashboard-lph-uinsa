@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
+/** Mengarahkan pengguna ke dashboard jika sudah masuk, atau ke halaman login jika belum. */
 export const load: PageServerLoad = async ({ cookies }) => {
 	const userId = cookies.get('session_user_id');
 

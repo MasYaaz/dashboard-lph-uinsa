@@ -89,6 +89,7 @@
 		{ value: 'BIAYA_LAIN', label: 'Biaya Lain' }
 	];
 
+	/** Menyimpan berkas CSV yang dipilih dari input unggahan. */
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		if (input.files) {
@@ -96,10 +97,12 @@
 		}
 	}
 
+	/** Menghapus baris pratinjau pada indeks yang dipilih. */
 	function hapusBaris(rowIdx: number) {
 		editableRows = editableRows.filter((_, i) => i !== rowIdx);
 	}
 
+	/** Menambahkan baris baru dengan nilai awal sesuai kolom migrasi. */
 	function tambahBaris() {
 		const barisBaru: Record<string, string> = { _row_idx: String(editableRows.length + 2) };
 		const today = new Date().toISOString().split('T')[0];
@@ -114,24 +117,28 @@
 	}
 
 	// Helper Multi-Petugas (disimpan sebagai string dipisah ';', misal "1;2;4")
+	/** Mengurai daftar ID petugas yang disimpan sebagai teks dipisahkan titik koma. */
 	function getPetugasArray(rawVal: string | undefined): string[] {
 		if (!rawVal) return [''];
 		const list = rawVal.split(';');
 		return list.length > 0 ? list : [''];
 	}
 
+	/** Mengganti ID petugas pada posisi tertentu di sebuah baris. */
 	function updatePetugasAt(rowIdx: number, header: string, petIdx: number, newVal: string) {
 		const list = getPetugasArray(editableRows[rowIdx][header]);
 		list[petIdx] = newVal;
 		editableRows[rowIdx][header] = list.join(';');
 	}
 
+	/** Menambahkan slot petugas kosong pada baris yang dipilih. */
 	function tambahPetugasKeBaris(rowIdx: number, header: string) {
 		const list = getPetugasArray(editableRows[rowIdx][header]);
 		list.push('');
 		editableRows[rowIdx][header] = list.join(';');
 	}
 
+	/** Menghapus slot petugas dan mengosongkan nilai terakhir jika hanya tersisa satu. */
 	function hapusPetugasDariBaris(rowIdx: number, header: string, petIdx: number) {
 		const list = getPetugasArray(editableRows[rowIdx][header]);
 		if (list.length > 1) {

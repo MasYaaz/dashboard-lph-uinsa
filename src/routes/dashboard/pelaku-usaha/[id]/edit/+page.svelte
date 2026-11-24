@@ -16,6 +16,7 @@
 	// Nilai default diambil dari data load atau kembalian form error jika ada
 	let alamatInput = $derived(form?.values?.alamat_outlet ?? data.pelakuUsaha.alamat_outlet);
 
+	/** Membuka rute Google Maps dari kampus ke alamat outlet yang sedang diedit. */
 	function bukaGmapsRoute() {
 		const asal = encodeURIComponent('UIN Sunan Ampel Surabaya Kampus 1');
 		const tujuan = encodeURIComponent(alamatInput || 'Surabaya');
