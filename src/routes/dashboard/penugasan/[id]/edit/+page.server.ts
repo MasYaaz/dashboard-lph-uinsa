@@ -13,6 +13,7 @@ export interface PermohonanDetailItem {
 	jarak_dari_pusat_kota: number;
 	kontak_penyelia: string;
 	tanggal_permohonan: string;
+	tanggal_penugasan: string; // Format YYYY-MM-DD untuk <input type="date">
 }
 
 export const load: PageServerLoad = async ({ params, parent }) => {
@@ -27,10 +28,11 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 	}
 
 	try {
-		// 1. Ambil detail penugasan dan permohonan audit
+		// 1. Ambil detail penugasan (termasuk tanggal_penugasan) dan permohonan audit
 		const penugasanRaw = await sql`
 			SELECT
 				p.id_penugasan,
+				p.tanggal_penugasan,
 				pa.id_daftar,
 				pu.nama_pelaku_usaha AS nama_pu,
 				pu.jumlah_produk,
@@ -58,13 +60,22 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 			WHERE dp.id_penugasan = ${idPenugasan}
 		`;
 
-		// 3. Ambil master petugas field yang aktif
+		// 3. Ambil master petugas field yang aktif ATAU yang sudah terdaftar pada penugasan ini
 		const listPetugas = await sql<PetugasField[]>`
 			SELECT id_petugas, nama_petugas, peran, kontak, is_active, created_at
 			FROM petugas_field
 			WHERE is_active = TRUE
+			   OR id_petugas IN (
+			       SELECT id_petugas FROM detail_penugasan_petugas WHERE id_penugasan = ${idPenugasan}
+			   )
 			ORDER BY nama_petugas ASC
 		`;
+
+		// Format tanggal_penugasan menjadi YYYY-MM-DD tanpa pergeseran timezone
+		const rawTglPenugasan = penugasanRaw[0].tanggal_penugasan;
+		const formattedTglPenugasan = rawTglPenugasan
+			? new Date(rawTglPenugasan).toLocaleDateString('en-CA') // menghasilkan format YYYY-MM-DD lokal
+			: new Date().toLocaleDateString('en-CA');
 
 		const penugasanDetail: PermohonanDetailItem = {
 			id_penugasan: Number(penugasanRaw[0].id_penugasan),
@@ -79,7 +90,8 @@ export const load: PageServerLoad = async ({ params, parent }) => {
 				day: 'numeric',
 				month: 'long',
 				year: 'numeric'
-			})
+			}),
+			tanggal_penugasan: formattedTglPenugasan
 		};
 
 		const existingAuditorIds = assignedPetugasRaw
@@ -108,11 +120,11 @@ export const actions = {
 		const idPenugasan = parseInt(params.id);
 		const formData = await request.formData();
 
+		const tanggal_penugasan = formData.get('tanggal_penugasan')?.toString().trim();
 		const auditorIds = formData
 			.getAll('id_auditor')
 			.map((id) => id.toString().trim())
 			.filter(Boolean);
-
 		const dewanSyariahIds = formData
 			.getAll('id_dewan_syariah')
 			.map((id) => id.toString().trim())
@@ -121,6 +133,9 @@ export const actions = {
 		// Validasi
 		if (isNaN(idPenugasan)) {
 			return fail(400, { error: 'ID Penugasan tidak valid.' });
+		}
+		if (!tanggal_penugasan) {
+			return fail(400, { error: 'Tanggal penugasan wajib diisi.' });
 		}
 		if (auditorIds.length === 0) {
 			return fail(400, { error: 'Minimal 1 orang Auditor harus dipilih.' });
@@ -139,10 +154,11 @@ export const actions = {
 
 		try {
 			await sql.begin(async (tx) => {
-				// 1. Update jumlah auditor pada tabel penugasan
+				// 1. Update tanggal_penugasan dan jumlah auditor pada tabel penugasan
 				await tx`
 					UPDATE penugasan
 					SET
+						tanggal_penugasan = ${tanggal_penugasan},
 						kebutuhan_jumlah_auditor = ${auditorIds.length},
 						updated_at = CURRENT_TIMESTAMP
 					WHERE id_penugasan = ${idPenugasan}

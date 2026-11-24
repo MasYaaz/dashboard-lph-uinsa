@@ -19,12 +19,14 @@
 	const auditorList = $derived(data.auditorList ?? []);
 	const dewanSyariahList = $derived(data.dewanSyariahList ?? []);
 
-	// Gunakan $state (bukan $derived) agar array bisa dimutasi & di-bind dengan aman di Svelte 5
+	// State form yang dimutasi di client
+	let tanggalPenugasan = $state('');
 	let selectedAuditors = $state<string[]>(['']);
 	let selectedDewanSyariah = $state<string[]>(['']);
 
 	// Sinkronkan data awal dari server saat load / navigasi antar ID
 	$effect(() => {
+		tanggalPenugasan = data.penugasanDetail?.tanggal_penugasan ?? '';
 		selectedAuditors = (data.existingAuditorIds ?? ['']).map(String);
 		selectedDewanSyariah = (data.existingDewanIds ?? ['']).map(String);
 	});
@@ -73,9 +75,8 @@
 			<div>
 				<h1 class="text-2xl font-bold tracking-tight text-slate-900">Edit Penugasan Tim</h1>
 				<p class="mt-1 text-xs text-slate-500">
-					Perbarui alokasi Auditor Field dan Dewan Syariah untuk permohonan <strong
-						>{detail.id_daftar}</strong
-					>.
+					Perbarui tanggal penugasan serta alokasi Auditor Field dan Dewan Syariah untuk permohonan
+					<strong>{detail.id_daftar}</strong>.
 				</p>
 			</div>
 		</div>
@@ -97,52 +98,70 @@
 			<span class="text-[11px] font-bold tracking-wider text-[#059669] uppercase"
 				>Edit Komposisi Tim</span
 			>
-			<h2 class="text-lg font-bold text-slate-900">Perbarui Anggota Tim Field</h2>
-		</div>
-
-		<!-- RINGKASAN DATA PERMOHONAN -->
-		<div class="space-y-1.5">
-			<label for="id_daftar_display" class="block text-xs font-semibold text-slate-700">
-				Permohonan Audit Target (Locked)
-			</label>
-			<div class="relative flex items-center">
-				<input
-					type="text"
-					id="id_daftar_display"
-					value={`${detail.id_daftar} - ${detail.nama_pu}`}
-					disabled
-					class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold text-slate-500"
-				/>
-				<Lock class="absolute right-3.5 h-4 w-4 text-slate-400" />
-			</div>
-
-			<div
-				class="mt-3 grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs md:grid-cols-3"
-			>
-				<div class="space-y-0.5">
-					<p class="text-[11px] font-medium text-slate-400">Nama Pelaku Usaha</p>
-					<p class="font-bold text-slate-900">{detail.nama_pu}</p>
-					<p class="text-[11px] font-semibold text-[#2563EB]">{detail.id_daftar}</p>
-				</div>
-				<div class="space-y-0.5">
-					<p class="text-[11px] font-medium text-slate-400">Scope & Lokasi</p>
-					<p class="font-semibold text-slate-700">
-						{detail.jumlah_produk} Produk • {detail.jumlah_outlet} Outlet
-					</p>
-					<p class="truncate text-[11px] text-slate-500">{detail.alamat_outlet}</p>
-				</div>
-				<div class="space-y-0.5">
-					<p class="text-[11px] font-medium text-slate-400">Jarak dari LPH (UINSA 1)</p>
-					<p class="font-bold text-[#2563EB]">{detail.jarak_dari_pusat_kota} km</p>
-					<div class="flex items-center gap-1 pt-0.5 text-[11px] text-slate-500">
-						<Calendar class="h-3 w-3 text-slate-400" />
-						<span>Tanggal: {detail.tanggal_permohonan}</span>
-					</div>
-				</div>
-			</div>
+			<h2 class="text-lg font-bold text-slate-900">Perbarui Jadwal & Anggota Tim Field</h2>
 		</div>
 
 		<form id="form-edit-penugasan" method="POST" action="?/update" class="space-y-6">
+			<!-- RINGKASAN DATA PERMOHONAN & INPUT TANGGAL PENUGASAN -->
+			<div class="space-y-3">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div class="space-y-1.5 md:col-span-2">
+						<label for="id_daftar_display" class="block text-xs font-semibold text-slate-700">
+							Permohonan Audit Target (Locked)
+						</label>
+						<div class="relative flex items-center">
+							<input
+								type="text"
+								id="id_daftar_display"
+								value={`${detail.id_daftar} - ${detail.nama_pu}`}
+								disabled
+								class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-xs font-bold text-slate-500"
+							/>
+							<Lock class="absolute right-3.5 h-4 w-4 text-slate-400" />
+						</div>
+					</div>
+
+					<div class="space-y-1.5">
+						<label for="tanggal_penugasan" class="block text-xs font-semibold text-slate-700">
+							Tanggal Penugasan *
+						</label>
+						<input
+							type="date"
+							id="tanggal_penugasan"
+							name="tanggal_penugasan"
+							bind:value={tanggalPenugasan}
+							required
+							class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
+						/>
+					</div>
+				</div>
+
+				<div
+					class="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs md:grid-cols-3"
+				>
+					<div class="space-y-0.5">
+						<p class="text-[11px] font-medium text-slate-400">Nama Pelaku Usaha</p>
+						<p class="font-bold text-slate-900">{detail.nama_pu}</p>
+						<p class="text-[11px] font-semibold text-[#2563EB]">{detail.id_daftar}</p>
+					</div>
+					<div class="space-y-0.5">
+						<p class="text-[11px] font-medium text-slate-400">Scope & Lokasi</p>
+						<p class="font-semibold text-slate-700">
+							{detail.jumlah_produk} Produk • {detail.jumlah_outlet} Outlet
+						</p>
+						<p class="truncate text-[11px] text-slate-500">{detail.alamat_outlet}</p>
+					</div>
+					<div class="space-y-0.5">
+						<p class="text-[11px] font-medium text-slate-400">Jarak dari LPH (UINSA 1)</p>
+						<p class="font-bold text-[#2563EB]">{detail.jarak_dari_pusat_kota} km</p>
+						<div class="flex items-center gap-1 pt-0.5 text-[11px] text-slate-500">
+							<Calendar class="h-3 w-3 text-slate-400" />
+							<span>Tgl Daftar: {detail.tanggal_permohonan}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			<!-- SECTION 1: PEMILIHAN MULTI-AUDITOR FIELD -->
 			<div class="space-y-4 border-t border-slate-100 pt-4">
 				<div class="flex items-center justify-between">
@@ -267,7 +286,9 @@
 					</a>
 					<button
 						type="submit"
-						disabled={selectedAuditors.some((id) => !id) || selectedDewanSyariah.some((id) => !id)}
+						disabled={!tanggalPenugasan ||
+							selectedAuditors.some((id) => !id) ||
+							selectedDewanSyariah.some((id) => !id)}
 						class="inline-flex h-10 items-center gap-2 rounded-full bg-[#059669] px-8 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857] disabled:opacity-40"
 					>
 						<CircleCheck class="h-4 w-4" />

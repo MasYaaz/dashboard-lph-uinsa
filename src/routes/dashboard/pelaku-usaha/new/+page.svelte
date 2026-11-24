@@ -9,18 +9,62 @@
 		MapPin,
 		Phone,
 		ArrowRight,
-		ArrowLeft
+		ArrowLeft,
+		LoaderCircle,
+		Navigation
 	} from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let idDaftarInput = $derived(form?.values?.id_daftar ?? data.recommendedId);
 	let alamatInput = $derived(form?.values?.alamat_outlet ?? '');
+	let jarakInput = $derived<string | number>(form?.values?.jarak ?? '');
+
+	let isCalculatingDistance = $state(false);
+	let distanceStatus = $state<{ type: 'success' | 'error'; text: string } | null>(null);
 
 	function bukaGmapsRoute() {
 		const asal = encodeURIComponent('UIN Sunan Ampel Surabaya Kampus 1');
 		const tujuan = encodeURIComponent(alamatInput || 'Surabaya');
 		window.open(`https://www.google.com/maps/dir/${asal}/${tujuan}`, '_blank');
+	}
+
+	async function hitungJarakOtomatis() {
+		const alamatBersih = alamatInput.trim();
+		if (!alamatBersih) {
+			distanceStatus = { type: 'error', text: 'Isi alamat outlet terlebih dahulu.' };
+			return;
+		}
+
+		isCalculatingDistance = true;
+		distanceStatus = null;
+
+		try {
+			const res = await fetch(`/api/hitung-jarak?alamat=${encodeURIComponent(alamatBersih)}`);
+			const result = await res.json();
+
+			if (!res.ok) {
+				distanceStatus = {
+					type: 'error',
+					text: result.error || 'Alamat tidak ditemukan di peta.'
+				};
+				return;
+			}
+
+			jarakInput = result.distanceKm;
+			distanceStatus = {
+				type: 'success',
+				text: `Terhitung ${result.distanceKm} km via rute jalan (${result.matchedAddress}).`
+			};
+		} catch (err) {
+			console.error('Error hitung jarak otomatis:', err);
+			distanceStatus = {
+				type: 'error',
+				text: 'Gagal terhubung ke server. Silakan cek via Google Maps atau isi manual.'
+			};
+		} finally {
+			isCalculatingDistance = false;
+		}
 	}
 </script>
 
@@ -192,29 +236,51 @@
 						name="alamat_outlet"
 						rows="3"
 						bind:value={alamatInput}
+						onblur={() => {
+							if (alamatInput.trim() && !jarakInput) {
+								hitungJarakOtomatis();
+							}
+						}}
 						placeholder="Jl. Raya Darmo No. 123, Surabaya, Jawa Timur"
 						required
 						class="w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#059669] focus:outline-none"
 					></textarea>
 					<p class="text-[11px] text-slate-400">
-						Cantumkan lokasi outlet utama yang akan diperiksa.
+						Sertakan nama jalan, kecamatan, dan kota agar jarak terhitung akurat.
 					</p>
 				</div>
 
 				<!-- Jarak (km) dari UINSA Kampus 1 Surabaya -->
 				<div class="space-y-1.5">
-					<div class="flex items-center justify-between">
+					<div class="flex flex-wrap items-center justify-between gap-2">
 						<label for="jarak" class="block text-xs font-semibold text-slate-700">
 							Jarak dari LPH (km) *
 						</label>
-						<button
-							type="button"
-							onclick={bukaGmapsRoute}
-							class="inline-flex items-center gap-1 text-[11px] font-bold text-[#2563EB] hover:underline"
-						>
-							<span>Hitung dari UINSA Kampus 1</span>
-							<ExternalLink class="h-3 w-3" />
-						</button>
+						<div class="flex items-center gap-3">
+							<button
+								type="button"
+								onclick={hitungJarakOtomatis}
+								disabled={isCalculatingDistance || !alamatInput.trim()}
+								class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-[#059669] transition-colors hover:bg-emerald-100 disabled:opacity-50"
+							>
+								{#if isCalculatingDistance}
+									<LoaderCircle class="h-3 w-3 animate-spin" />
+									<span>Menghitung...</span>
+								{:else}
+									<Navigation class="h-3 w-3" />
+									<span>Hitung Otomatis</span>
+								{/if}
+							</button>
+
+							<button
+								type="button"
+								onclick={bukaGmapsRoute}
+								class="inline-flex items-center gap-1 text-[11px] font-bold text-[#2563EB] hover:underline"
+							>
+								<span>Cek Gmaps</span>
+								<ExternalLink class="h-3 w-3" />
+							</button>
+						</div>
 					</div>
 					<div class="relative flex items-center">
 						<input
@@ -222,16 +288,26 @@
 							step="0.1"
 							id="jarak"
 							name="jarak"
-							value={form?.values?.jarak ?? ''}
-							placeholder="35"
+							bind:value={jarakInput}
+							placeholder="Otomatis dari alamat atau isi manual"
 							required
 							class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
 						/>
 						<MapPin class="absolute right-3.5 h-4 w-4 text-slate-400" />
 					</div>
-					<p class="text-[11px] text-slate-400">
-						Jarak satu arah dari kantor LPH (UINSA Kampus 1) ke lokasi audit.
-					</p>
+					{#if distanceStatus}
+						<p
+							class="text-[11px] font-medium {distanceStatus.type === 'success'
+								? 'text-[#059669]'
+								: 'text-rose-600'}"
+						>
+							{distanceStatus.text}
+						</p>
+					{:else}
+						<p class="text-[11px] text-slate-400">
+							Jarak satu arah dari kantor LPH (UINSA Kampus 1) ke lokasi audit.
+						</p>
+					{/if}
 				</div>
 
 				<!-- Nomor Kontak Penyelia Halal -->

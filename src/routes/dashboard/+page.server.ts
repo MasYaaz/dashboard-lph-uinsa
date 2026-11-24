@@ -12,6 +12,7 @@ interface DashboardStatsRow {
 interface PelakuUsahaRekapRow {
 	id_daftar: string;
 	nama_pelaku_usaha: string;
+	tanggal_permohonan: Date | string;
 	tim_auditor: string | null;
 	total_biaya_final: number | null;
 	status_penugasan: string | null;
@@ -44,12 +45,13 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 			perlu_revisi: 0
 		};
 
-		// 2. Query Rekap Daftar Pelaku Usaha & Total Tagihan Header
+		// 2. Query Rekap Daftar Pelaku Usaha, Tanggal Permohonan & Total Tagihan Header
 		const querySearch = `%${search}%`;
 		const dataList = await sql<PelakuUsahaRekapRow[]>`
 			SELECT
 				pu.id_daftar,
 				pu.nama_pelaku_usaha,
+				pa.tanggal_permohonan,
 				(
 					SELECT STRING_AGG(pf.nama_petugas, ', ')
 					FROM detail_penugasan_petugas dp
@@ -93,9 +95,18 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 					displayStatus = 'TERVERIFIKASI';
 				}
 
+				const tanggalFormatted = row.tanggal_permohonan
+					? new Date(row.tanggal_permohonan).toLocaleDateString('id-ID', {
+							day: '2-digit',
+							month: 'short',
+							year: 'numeric'
+						})
+					: '—';
+
 				return {
 					idDaftar: String(row.id_daftar),
 					namaPu: String(row.nama_pelaku_usaha),
+					tanggalPermohonan: tanggalFormatted,
 					timAuditor: row.tim_auditor ? String(row.tim_auditor) : 'Belum ditugaskan',
 					totalBiaya: row.total_biaya_final !== null ? Number(row.total_biaya_final) : null,
 					status: displayStatus
@@ -120,7 +131,6 @@ export const actions = {
 			let rows: string[][] = [];
 
 			if (userRole === 'BENDAHARA') {
-				// EKSPOR BENDAHARA: Mengambil data dari Header & Detail Keuangan
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',
@@ -153,7 +163,6 @@ export const actions = {
 					`"${r.status_keuangan}"`
 				]);
 			} else {
-				// EKSPOR STAF ADMINISTRASI: Menggunakan kontak_penyelia
 				csvHeaders = [
 					'ID Daftar',
 					'Nama Pelaku Usaha',

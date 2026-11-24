@@ -7,7 +7,6 @@
 		Calendar,
 		Search,
 		FileSpreadsheet,
-		ChevronRight,
 		CircleCheck,
 		CircleAlert,
 		Funnel,
@@ -242,10 +241,10 @@
 					>
 						<th class="px-6 py-3.5">ID Daftar</th>
 						<th class="px-6 py-3.5">Nama Pelaku Usaha</th>
+						<th class="px-6 py-3.5">Tanggal</th>
 						<th class="px-6 py-3.5">Tim Auditor</th>
 						<th class="px-6 py-3.5">Total Biaya Final</th>
 						<th class="px-6 py-3.5">Status</th>
-						<th class="px-6 py-3.5 text-right">Aksi</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-100 text-[12px] font-medium text-slate-700">
@@ -253,6 +252,7 @@
 						<tr class="transition-colors hover:bg-slate-50/80">
 							<td class="px-6 py-4 font-bold text-[#2563EB]">{item.idDaftar}</td>
 							<td class="px-6 py-4 font-bold text-slate-900">{item.namaPu}</td>
+							<td class="px-6 py-4 whitespace-nowrap text-slate-500">{item.tanggalPermohonan}</td>
 							<td class="px-6 py-4 text-slate-600">{item.timAuditor}</td>
 							<td class="px-6 py-4 font-bold text-slate-900">{formatRupiah(item.totalBiaya)}</td>
 							<td class="px-6 py-4">
@@ -268,33 +268,6 @@
 									<span class="inline-flex items-center gap-1 text-xs font-bold text-rose-600">
 										• Revisi
 									</span>
-								{/if}
-							</td>
-							<td class="px-6 py-4 text-right">
-								{#if item.status === 'PENDING'}
-									<a
-										href={resolve(`/dashboard/penugasan`)}
-										class="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900"
-									>
-										<span>Lengkapi data</span>
-										<ChevronRight class="h-3.5 w-3.5" />
-									</a>
-								{:else if item.status === 'REVISI'}
-									<a
-										href={resolve(`/dashboard/tagihan`)}
-										class="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900"
-									>
-										<span>Tinjau revisi</span>
-										<ChevronRight class="h-3.5 w-3.5" />
-									</a>
-								{:else}
-									<a
-										href={resolve(`/dashboard/tagihan`)}
-										class="inline-flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-slate-900"
-									>
-										<span>Lihat detail</span>
-										<ChevronRight class="h-3.5 w-3.5" />
-									</a>
 								{/if}
 							</td>
 						</tr>

@@ -23,11 +23,16 @@ export const load: PageServerLoad = async ({ parent }) => {
 	}
 
 	try {
-		// Ambil permohonan audit yang terdaftar
+		// Hanya ambil permohonan audit yang BELUM pernah diterbitkan invoicenya di keuangan_audit
 		const permohonanRaw = await sql`
-			SELECT DISTINCT pa.id_permohonan, pa.id_daftar, pu.nama_pelaku_usaha AS nama_pu
+			SELECT pa.id_permohonan, pa.id_daftar, pu.nama_pelaku_usaha AS nama_pu
 			FROM permohonan_audit pa
 			JOIN pelaku_usaha pu ON pa.id_daftar = pu.id_daftar
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM keuangan_audit ka
+				WHERE ka.id_permohonan = pa.id_permohonan
+			)
 			ORDER BY pa.id_permohonan DESC
 		`;
 
@@ -98,7 +103,19 @@ export const actions = {
 
 				const idPermohonan = Number(permohonan[0].id_permohonan);
 
-				// 2. Insert Header Invoice ke `keuangan_audit`
+				// 2. Pastikan permohonan ini belum memiliki invoice
+				const existingInvoice = await tx`
+					SELECT id_keuangan
+					FROM keuangan_audit
+					WHERE id_permohonan = ${idPermohonan}
+					LIMIT 1
+				`;
+
+				if (existingInvoice.length > 0) {
+					throw new Error(`DUPLICATE_INVOICE: Permohonan ${id_daftar} sudah memiliki invoice.`);
+				}
+
+				// 3. Insert Header Invoice ke `keuangan_audit`
 				const resHeader = await tx`
 					INSERT INTO keuangan_audit (
 						id_permohonan,
@@ -118,7 +135,7 @@ export const actions = {
 
 				const idKeuangan = Number(resHeader[0].id_keuangan);
 
-				// 3. Insert Seluruh Item Rincian Biaya ke `detail_keuangan_audit`
+				// 4. Insert Seluruh Item Rincian Biaya ke `detail_keuangan_audit`
 				for (const item of validItems) {
 					const keteranganFinal = item.catatan ? item.catatan.trim() : null;
 					await tx`
@@ -138,6 +155,11 @@ export const actions = {
 			});
 		} catch (err) {
 			console.error('Error insert tagihan keuangan header-detail:', err);
+			if (err instanceof Error && err.message.startsWith('DUPLICATE_INVOICE:')) {
+				return fail(400, {
+					error: 'Pelaku usaha / permohonan ini sudah pernah diterbitkan invoicenya.'
+				});
+			}
 			return fail(500, {
 				error: 'Terjadi kesalahan sistem saat melepaskan/menerbitkan invoice tagihan.'
 			});

@@ -18,13 +18,13 @@ export const load: PageServerLoad = async ({ parent }) => {
 	}
 
 	try {
-		// Ambil riwayat penugasan tim
+		// Ambil riwayat penugasan tim menggunakan kolom tanggal_penugasan
 		const riwayatPenugasanRaw = await sql`
 			SELECT
 				p.id_penugasan,
 				pa.id_daftar,
 				pu.nama_pelaku_usaha AS nama_pu,
-				p.created_at AS tgl_penugasan,
+				p.tanggal_penugasan AS tgl_penugasan,
 				p.status_penugasan,
 				(
 					SELECT STRING_AGG(pf.nama_petugas || ' (' || pf.peran || ')', ', ')
@@ -35,26 +35,32 @@ export const load: PageServerLoad = async ({ parent }) => {
 			FROM penugasan p
 			JOIN permohonan_audit pa ON p.id_permohonan = pa.id_permohonan
 			JOIN pelaku_usaha pu ON pa.id_daftar = pu.id_daftar
-			ORDER BY p.created_at DESC
+			ORDER BY p.tanggal_penugasan DESC, p.id_penugasan DESC
 		`;
 
 		const riwayatPenugasan: RiwayatPenugasanItem[] = riwayatPenugasanRaw.map((row) => ({
 			id_penugasan: Number(row.id_penugasan),
 			id_daftar: String(row.id_daftar),
 			nama_pu: String(row.nama_pu),
-			tgl_penugasan: new Date(row.tgl_penugasan).toLocaleDateString('id-ID', {
-				day: 'numeric',
-				month: 'short',
-				year: 'numeric'
-			}),
+			tgl_penugasan: row.tgl_penugasan
+				? new Date(row.tgl_penugasan).toLocaleDateString('id-ID', {
+						day: 'numeric',
+						month: 'short',
+						year: 'numeric'
+					})
+				: '-',
 			status_penugasan: String(row.status_penugasan),
 			tim_petugas: String(row.tim_petugas ?? '-')
 		}));
 
-		return { riwayatPenugasan };
+		return {
+			riwayatPenugasan
+		};
 	} catch (err) {
 		console.error('Error load list penugasan:', err);
-		return { riwayatPenugasan: [] };
+		return {
+			riwayatPenugasan: []
+		};
 	}
 };
 
@@ -70,10 +76,8 @@ export const actions = {
 		try {
 			await sql.begin(async (tx) => {
 				const idPenugasanInt = parseInt(id_penugasan);
-
 				// 1. Hapus detail alokasi petugas
 				await tx`DELETE FROM detail_penugasan_petugas WHERE id_penugasan = ${idPenugasanInt}`;
-
 				// 2. Hapus entri penugasan utama
 				await tx`DELETE FROM penugasan WHERE id_penugasan = ${idPenugasanInt}`;
 			});

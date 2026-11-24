@@ -20,6 +20,7 @@
 
 	// State Form lokal
 	let selectedIdDaftar = $state('');
+	let tanggalPenugasan = $state(new Date().toISOString().slice(0, 10));
 
 	// Array Dinamis untuk ID Petugas (Auditor & Dewan Syariah)
 	let selectedAuditors = $state<string[]>(['']);
@@ -42,20 +43,20 @@
 		selectedAuditors.filter(Boolean).length + selectedDewanSyariah.filter(Boolean).length
 	);
 
-	// Handler Dinamis Auditor
 	function tambahAuditor() {
 		selectedAuditors = [...selectedAuditors, ''];
 	}
+
 	function hapusAuditor(index: number) {
 		if (selectedAuditors.length > 1) {
 			selectedAuditors = selectedAuditors.filter((_, i) => i !== index);
 		}
 	}
 
-	// Handler Dinamis Dewan Syariah
 	function tambahDewanSyariah() {
 		selectedDewanSyariah = [...selectedDewanSyariah, ''];
 	}
+
 	function hapusDewanSyariah(index: number) {
 		if (selectedDewanSyariah.length > 1) {
 			selectedDewanSyariah = selectedDewanSyariah.filter((_, i) => i !== index);
@@ -107,27 +108,45 @@
 		</div>
 
 		<form id="form-penugasan" method="POST" action="?/tugaskan" class="space-y-6">
-			<!-- SELECT PERMOHONAN & RINGKASAN RINGKAS -->
-			<div class="space-y-3">
-				<label for="id_daftar" class="block text-xs font-semibold text-slate-700">
-					Permohonan Audit Target *
-				</label>
-				<select
-					id="id_daftar"
-					name="id_daftar"
-					bind:value={selectedIdDaftar}
-					required
-					class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
-				>
-					<option value="" disabled>-- Pilih Permohonan Audit --</option>
-					{#each permohonanPending as p (p.id_daftar)}
-						<option value={p.id_daftar}>
-							{p.id_daftar} - {p.nama_pu}
-						</option>
-					{:else}
-						<option value="" disabled>Tidak ada permohonan audit yang belum ditugaskan</option>
-					{/each}
-				</select>
+			<!-- SELECT PERMOHONAN & TANGGAL PENUGASAN -->
+			<div class="space-y-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+					<div class="space-y-1.5 md:col-span-2">
+						<label for="id_daftar" class="block text-xs font-semibold text-slate-700">
+							Permohonan Audit Target *
+						</label>
+						<select
+							id="id_daftar"
+							name="id_daftar"
+							bind:value={selectedIdDaftar}
+							required
+							class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
+						>
+							<option value="" disabled>-- Pilih Permohonan Audit --</option>
+							{#each permohonanPending as p (p.id_daftar)}
+								<option value={p.id_daftar}>
+									{p.id_daftar} - {p.nama_pu}
+								</option>
+							{:else}
+								<option value="" disabled>Tidak ada permohonan audit yang belum ditugaskan</option>
+							{/each}
+						</select>
+					</div>
+
+					<div class="space-y-1.5">
+						<label for="tanggal_penugasan" class="block text-xs font-semibold text-slate-700">
+							Tanggal Penugasan *
+						</label>
+						<input
+							type="date"
+							id="tanggal_penugasan"
+							name="tanggal_penugasan"
+							bind:value={tanggalPenugasan}
+							required
+							class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
+						/>
+					</div>
+				</div>
 
 				<!-- QUICK INFO PERMOHONAN TERPILIH -->
 				{#if selectedPermohonan}
@@ -156,7 +175,7 @@
 							</p>
 							<div class="flex items-center gap-1 pt-0.5 text-[11px] text-slate-500">
 								<Calendar class="h-3 w-3 text-slate-400" />
-								<span>Tanggal: {selectedPermohonan.tanggal_permohonan}</span>
+								<span>Tgl Daftar: {selectedPermohonan.tanggal_permohonan}</span>
 							</div>
 						</div>
 					</div>
@@ -192,16 +211,18 @@
 									required
 									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:outline-none"
 								>
-									<option value="" disabled
-										>-- Pilih Auditor {idx === 0 ? '(Utama)' : `Anggota #${idx}`} --</option
-									>
+									<option value="" disabled>
+										-- Pilih Auditor {idx === 0 ? '(Utama)' : `Anggota #${idx}`} --
+									</option>
 									{#each auditorList as a (a.id_petugas)}
-										{#if !selectedAuditors.includes(String(a.id_petugas)) || auditorId === String(a.id_petugas)}
-											<option value={a.id_petugas}>{a.nama_petugas} (Auditor)</option>
+										{@const strId = String(a.id_petugas)}
+										{#if !selectedAuditors.includes(strId) || auditorId === strId}
+											<option value={strId}>{a.nama_petugas} (Auditor)</option>
 										{/if}
 									{/each}
 								</select>
 							</div>
+
 							{#if selectedAuditors.length > 1}
 								<button
 									type="button"
@@ -248,12 +269,14 @@
 								>
 									<option value="" disabled>-- Pilih Dewan Syariah #{idx + 1} --</option>
 									{#each dewanSyariahList as d (d.id_petugas)}
-										{#if !selectedDewanSyariah.includes(String(d.id_petugas)) || dewanId === String(d.id_petugas)}
-											<option value={d.id_petugas}>{d.nama_petugas} (Dewan Syariah)</option>
+										{@const strId = String(d.id_petugas)}
+										{#if !selectedDewanSyariah.includes(strId) || dewanId === strId}
+											<option value={strId}>{d.nama_petugas} (Dewan Syariah)</option>
 										{/if}
 									{/each}
 								</select>
 							</div>
+
 							{#if selectedDewanSyariah.length > 1}
 								<button
 									type="button"
@@ -284,6 +307,7 @@
 					<button
 						type="submit"
 						disabled={!selectedIdDaftar ||
+							!tanggalPenugasan ||
 							selectedAuditors.some((id) => !id) ||
 							selectedDewanSyariah.some((id) => !id)}
 						class="inline-flex h-10 items-center gap-2 rounded-full bg-[#059669] px-8 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857] disabled:opacity-40"

@@ -72,6 +72,7 @@
 					Menampilkan {filteredRiwayat.length} dari total {data.riwayatPenugasan.length} penugasan
 				</p>
 			</div>
+
 			<div class="relative w-full sm:w-72">
 				<input
 					type="text"
@@ -92,7 +93,7 @@
 						<th class="px-6 py-3.5">ID Daftar</th>
 						<th class="px-6 py-3.5">Nama Pelaku Usaha</th>
 						<th class="px-6 py-3.5">Tim Petugas Ditugaskan</th>
-						<th class="px-6 py-3.5">Tanggal Plotting</th>
+						<th class="px-6 py-3.5">Tanggal Penugasan</th>
 						<th class="px-6 py-3.5">Status</th>
 						<th class="px-6 py-3.5 text-center">Aksi</th>
 					</tr>
@@ -108,21 +109,33 @@
 									<span class="leading-relaxed">{r.tim_petugas}</span>
 								</div>
 							</td>
-							<td class="px-6 py-4 text-slate-500">{r.tgl_penugasan}</td>
+							<td class="px-6 py-4 whitespace-nowrap text-slate-500">{r.tgl_penugasan}</td>
 							<td class="px-6 py-4">
-								<span
-									class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-[#059669]"
-								>
-									• {r.status_penugasan}
-								</span>
+								{#if r.status_penugasan === 'ASSIGNED'}
+									<span
+										class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-[#059669]"
+									>
+										• ASSIGNED
+									</span>
+								{:else if r.status_penugasan === 'REASSIGNED'}
+									<span
+										class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-[#2563EB]"
+									>
+										• REASSIGNED
+									</span>
+								{:else}
+									<span
+										class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-600"
+									>
+										• {r.status_penugasan}
+									</span>
+								{/if}
 							</td>
 							<td class="px-6 py-4 text-center">
 								<div class="flex items-center justify-center gap-2">
 									<!-- Tombol Edit -->
 									<a
-										href={resolve(`/dashboard/penugasan/[id]/edit`, {
-											id: String(r.id_penugasan)
-										})}
+										href={resolve(`/dashboard/penugasan/[id]/edit`, { id: String(r.id_penugasan) })}
 										class="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:border-emerald-300 hover:bg-emerald-50 hover:text-[#059669]"
 										title="Edit Tim Penugasan"
 									>

@@ -84,6 +84,7 @@ export interface Penugasan {
 	kebutuhan_jumlah_auditor: number;
 	status_penugasan: StatusPenugasan;
 	assigned_by: number | null;
+	tanggal_penugasan: Date | string;
 	created_at: Date | string;
 	updated_at: Date | string;
 }

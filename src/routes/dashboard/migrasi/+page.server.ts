@@ -31,22 +31,18 @@ export const load: PageServerLoad = async ({ parent }) => {
 			ORDER BY pa.id_permohonan DESC
 		`;
 
-		const daftarPetugas: PetugasRef[] = daftarPetugasRaw.map((row) => ({
-			id_petugas: Number(row.id_petugas),
-			nama_petugas: String(row.nama_petugas),
-			peran: String(row.peran)
-		}));
-
-		const daftarPermohonan: PermohonanRef[] = daftarPermohonanRaw.map((row) => ({
-			id_permohonan: Number(row.id_permohonan),
-			id_daftar: String(row.id_daftar),
-			nama_pelaku_usaha: String(row.nama_pelaku_usaha)
-		}));
-
 		return {
 			referensi: {
-				petugas: daftarPetugas,
-				permohonan: daftarPermohonan
+				petugas: daftarPetugasRaw.map((row) => ({
+					id_petugas: Number(row.id_petugas),
+					nama_petugas: String(row.nama_petugas),
+					peran: String(row.peran)
+				})) as PetugasRef[],
+				permohonan: daftarPermohonanRaw.map((row) => ({
+					id_permohonan: Number(row.id_permohonan),
+					id_daftar: String(row.id_daftar),
+					nama_pelaku_usaha: String(row.nama_pelaku_usaha)
+				})) as PermohonanRef[]
 			}
 		};
 	} catch (err) {
@@ -62,7 +58,6 @@ function parseCSVLine(line: string): string[] {
 
 	for (let i = 0; i < line.length; i++) {
 		const char = line[i];
-
 		if (char === '"') {
 			if (inQuotes && line[i + 1] === '"') {
 				current += '"';
@@ -126,7 +121,7 @@ export const actions = {
 		const files = formData.getAll('excel_file') as File[];
 
 		if (!targetTable || files.length === 0 || files[0].size === 0) {
-			return fail(400, { error: 'Pilih jenis tabel target dan unggah berkas CSV yang valid.' });
+			return fail(400, { error: 'Pilih jenis berkas CSV dan unggah berkas yang valid.' });
 		}
 
 		try {
@@ -138,13 +133,41 @@ export const actions = {
 				return fail(400, { error: 'Berkas CSV minimal harus memiliki header dan 1 baris data.' });
 			}
 
+			// Ambil master petugas untuk auto-resolve nama petugas -> ID
+			const masterPetugas = await sql`SELECT id_petugas, nama_petugas FROM petugas_field`;
+			const petugasMapByName = new Map(
+				masterPetugas.map((p) => [
+					String(p.nama_petugas).trim().toLowerCase(),
+					String(p.id_petugas)
+				])
+			);
+
 			const headers = parseCSVLine(lines[0]);
 			const rows = lines.slice(1).map((line, idx) => {
 				const values = parseCSVLine(line);
 				const rowObj: Record<string, string> = { _row_idx: String(idx + 2) };
 				headers.forEach((header, colIdx) => {
 					const rawVal = values[colIdx] ?? '';
-					rowObj[header] = normalizeEnumValue(header, rawVal);
+					if (header === 'id_petugas' || header === 'tim_petugas') {
+						const resolvedList = rawVal
+							.split(/[;|]+/)
+							.map((token) => {
+								const t = token.trim();
+								if (!t) return '';
+								if (!isNaN(Number(t))) return t;
+								return petugasMapByName.get(t.toLowerCase()) ?? t;
+							})
+							.filter(Boolean);
+						rowObj[header] = resolvedList.join(';');
+					} else if (header === 'jenis_transaksi') {
+						const normalizedJenis = rawVal
+							.split(/[;|]+/)
+							.map((token) => (token.trim() ? normalizeEnumValue('jenis_transaksi', token) : ''))
+							.filter(Boolean);
+						rowObj[header] = normalizedJenis.join(';');
+					} else {
+						rowObj[header] = normalizeEnumValue(header, rawVal);
+					}
 				});
 				return rowObj;
 			});
@@ -181,20 +204,41 @@ export const actions = {
 		const currentUserId = locals.user?.id_user || null;
 		let successCount = 0;
 		let failCount = 0;
+		const errorNotes: string[] = [];
+
+		// Melacak invoice yang sudah di-reset totalnya dalam batch ini agar akumulasi multi-baris akurat
+		const processedInvoicesInBatch = new Set<string>();
 
 		try {
 			await sql.begin(async (tx) => {
 				for (const row of rows) {
 					try {
-						if (targetTable === 'pelaku_usaha') {
-							const kontakPenyelia = (row.kontak_penyelia || row.nama_kontak_penyelia || '').trim();
+						const today = new Date().toISOString().split('T')[0];
+
+						if (targetTable === 'pelaku_usaha_penugasan') {
+							// ===================================================================
+							// CSV 1: PELAKU USAHA + PERMOHONAN AUDIT + PENUGASAN + DETAIL PETUGAS
+							// ===================================================================
+							const idDaftar = (row.id_daftar || '').trim();
+							if (!idDaftar) {
+								throw new Error(`Baris #${row._row_idx}: Kolom id_daftar wajib diisi.`);
+							}
+
+							const kontakPenyelia = (
+								row.kontak_penyelia ||
+								row.nama_kontak_penyelia ||
+								'-'
+							).trim();
+							const tglPermohonan = (row.tanggal_permohonan || '').trim() || today;
+
+							// 1. Upsert Pelaku Usaha
 							await tx`
 								INSERT INTO pelaku_usaha (
 									id_daftar, nama_pelaku_usaha, jumlah_produk, jumlah_outlet,
 									alamat_outlet, jarak_dari_pusat_kota, kontak_penyelia, created_by
 								) VALUES (
-									${row.id_daftar}, ${row.nama_pelaku_usaha}, ${parseInt(row.jumlah_produk || '0')},
-									${parseInt(row.jumlah_outlet || '0')}, ${row.alamat_outlet},
+									${idDaftar}, ${row.nama_pelaku_usaha}, ${parseInt(row.jumlah_produk || '0')},
+									${parseInt(row.jumlah_outlet || '0')}, ${row.alamat_outlet || '-'},
 									${parseFloat(row.jarak_dari_pusat_kota || '0')}, ${kontakPenyelia}, ${currentUserId}
 								)
 								ON CONFLICT (id_daftar) DO UPDATE SET
@@ -203,128 +247,244 @@ export const actions = {
 									jumlah_outlet = EXCLUDED.jumlah_outlet,
 									alamat_outlet = EXCLUDED.alamat_outlet,
 									jarak_dari_pusat_kota = EXCLUDED.jarak_dari_pusat_kota,
-									kontak_penyelia = EXCLUDED.kontak_penyelia;
+									kontak_penyelia = EXCLUDED.kontak_penyelia,
+									updated_at = CURRENT_TIMESTAMP;
 							`;
-						} else if (targetTable === 'permohonan_audit') {
-							await tx`
-								INSERT INTO permohonan_audit (id_daftar, tanggal_permohonan)
-								VALUES (${row.id_daftar}, ${row.tanggal_permohonan || new Date().toISOString().split('T')[0]})
-							`;
-						} else if (targetTable === 'penugasan') {
-							const statusPenugasan = normalizeEnumValue(
-								'status_penugasan',
-								row.status_penugasan || 'ASSIGNED'
-							);
-							await tx`
-								INSERT INTO penugasan (id_permohonan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by)
-								VALUES (
-									${parseInt(row.id_permohonan)}, ${parseInt(row.kebutuhan_jumlah_auditor || '1')},
-									${statusPenugasan}::status_penugasan_enum, ${currentUserId}
-								)
-							`;
-						} else if (targetTable === 'detail_penugasan_petugas') {
-							const regId = (row.id_daftar || row.id_penugasan || row.id_permohonan || '').trim();
-							let targetPenugasanId = parseInt(regId || '0');
 
-							if (isNaN(targetPenugasanId) || targetPenugasanId === 0) {
-								const resPen = await tx`
-									SELECT p.id_penugasan
-									FROM penugasan p
-									JOIN permohonan_audit pa ON p.id_permohonan = pa.id_permohonan
-									WHERE pa.id_daftar = ${regId}
-									ORDER BY p.id_penugasan DESC
-									LIMIT 1
+							// 2. Upsert Permohonan Audit (1-to-1)
+							let idPermohonan: number;
+							const existingPerm = await tx`
+								SELECT id_permohonan FROM permohonan_audit WHERE id_daftar = ${idDaftar} LIMIT 1
+							`;
+							if (existingPerm.length === 0) {
+								const insPerm = await tx`
+									INSERT INTO permohonan_audit (id_daftar, tanggal_permohonan)
+									VALUES (${idDaftar}, ${tglPermohonan})
+									RETURNING id_permohonan
 								`;
-								if (resPen.length > 0) {
-									targetPenugasanId = Number(resPen[0].id_penugasan);
+								idPermohonan = Number(insPerm[0].id_permohonan);
+							} else {
+								idPermohonan = Number(existingPerm[0].id_permohonan);
+								if (row.tanggal_permohonan) {
+									await tx`
+										UPDATE permohonan_audit
+										SET tanggal_permohonan = ${tglPermohonan}
+										WHERE id_permohonan = ${idPermohonan}
+									`;
 								}
 							}
 
-							if (!targetPenugasanId || isNaN(targetPenugasanId)) {
-								throw new Error(
-									`Data Penugasan untuk No Registrasi "${regId || 'kosong'}" belum ada di database. Pastikan Step 3 (penugasan) sudah diimpor.`
+							// 3. Upsert Penugasan & Detail Multi-Petugas (jika ada data penugasan/petugas)
+							const rawPetugasStr = (row.id_petugas || row.tim_petugas || '').trim();
+							if (rawPetugasStr || row.tanggal_penugasan || row.status_penugasan) {
+								const tglPenugasan = (row.tanggal_penugasan || '').trim() || today;
+								const statusPenugasan = normalizeEnumValue(
+									'status_penugasan',
+									row.status_penugasan || 'ASSIGNED'
 								);
-							}
 
-							const idPetugasNum = parseInt(row.id_petugas || '0');
-							if (!idPetugasNum) {
-								throw new Error(`ID Petugas tidak valid pada baris #${row._row_idx}.`);
-							}
+								const existingPen = await tx`
+									SELECT id_penugasan FROM penugasan
+									WHERE id_permohonan = ${idPermohonan}
+									ORDER BY id_penugasan DESC LIMIT 1
+								`;
 
-							await tx`
-								INSERT INTO detail_penugasan_petugas (id_penugasan, id_petugas)
-								VALUES (${targetPenugasanId}, ${idPetugasNum})
-							`;
+								let idPenugasan: number;
+								if (existingPen.length > 0) {
+									idPenugasan = Number(existingPen[0].id_penugasan);
+									await tx`
+										UPDATE penugasan
+										SET tanggal_penugasan = ${tglPenugasan},
+										    status_penugasan = ${statusPenugasan}::status_penugasan_enum,
+										    updated_at = CURRENT_TIMESTAMP
+										WHERE id_penugasan = ${idPenugasan}
+									`;
+								} else {
+									const insPen = await tx`
+										INSERT INTO penugasan (
+											id_permohonan, tanggal_penugasan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by
+										) VALUES (
+											${idPermohonan}, ${tglPenugasan}, 1,
+											${statusPenugasan}::status_penugasan_enum, ${currentUserId}
+										)
+										RETURNING id_penugasan
+									`;
+									idPenugasan = Number(insPen[0].id_penugasan);
+								}
+
+								if (rawPetugasStr) {
+									const rawPetugasTokens = rawPetugasStr
+										.split(/[;|]+/)
+										.map((s) => s.trim())
+										.filter(Boolean);
+
+									const resolvedPetugasIds: number[] = [];
+									for (const token of rawPetugasTokens) {
+										let petugasId = parseInt(token);
+										if (isNaN(petugasId)) {
+											const resPet = await tx`
+												SELECT id_petugas FROM petugas_field WHERE nama_petugas ILIKE ${token} LIMIT 1
+											`;
+											if (resPet.length > 0) petugasId = Number(resPet[0].id_petugas);
+										}
+										if (petugasId && !isNaN(petugasId) && !resolvedPetugasIds.includes(petugasId)) {
+											resolvedPetugasIds.push(petugasId);
+										}
+									}
+
+									// Sinkronkan daftar petugas untuk penugasan ini
+									await tx`DELETE FROM detail_penugasan_petugas WHERE id_penugasan = ${idPenugasan}`;
+									for (const pid of resolvedPetugasIds) {
+										await tx`
+											INSERT INTO detail_penugasan_petugas (id_penugasan, id_petugas)
+											VALUES (${idPenugasan}, ${pid})
+										`;
+									}
+
+									// Hitung otomatis kebutuhan_jumlah_auditor berdasarkan jumlah AUDITOR ter-assign
+									await tx`
+										UPDATE penugasan
+										SET kebutuhan_jumlah_auditor = GREATEST(1, (
+											SELECT COUNT(*)::int
+											FROM detail_penugasan_petugas dp
+											JOIN petugas_field pf ON dp.id_petugas = pf.id_petugas
+											WHERE dp.id_penugasan = ${idPenugasan} AND pf.peran = 'AUDITOR'
+										))
+										WHERE id_penugasan = ${idPenugasan}
+									`;
+								}
+							}
 						} else if (targetTable === 'keuangan_audit') {
-							let targetPermohonanId = parseInt(row.id_permohonan || '0');
+							// ===================================================================
+							// CSV 2: KEUANGAN AUDIT (HEADER INVOICE + DETAIL RINCIAN BIAYA)
+							// ===================================================================
+							const regId = (row.id_daftar || '').trim();
+							let idPermohonan = parseInt(row.id_permohonan || '0');
 
-							if (!targetPermohonanId && row.id_daftar) {
+							if (!idPermohonan && regId) {
 								const resPerm = await tx`
-									SELECT id_permohonan FROM permohonan_audit WHERE id_daftar = ${row.id_daftar} LIMIT 1
+									SELECT id_permohonan FROM permohonan_audit WHERE id_daftar = ${regId} LIMIT 1
 								`;
 								if (resPerm.length > 0) {
-									targetPermohonanId = Number(resPerm[0].id_permohonan);
+									idPermohonan = Number(resPerm[0].id_permohonan);
 								}
 							}
 
-							if (!targetPermohonanId || isNaN(targetPermohonanId)) {
+							if (!idPermohonan || isNaN(idPermohonan)) {
 								throw new Error(
-									`Permohonan Audit untuk "${row.id_daftar || row.id_permohonan}" tidak ditemukan di database.`
+									`Baris #${row._row_idx}: Pelaku Usaha "${regId || row.id_permohonan}" belum ada. Impor CSV 1 terlebih dahulu.`
 								);
 							}
 
-							const nominalUang = parseFloat(row.jumlah_uang || '0');
+							const noInvoice = (row.no_invoice || '').trim();
+							if (!noInvoice) {
+								throw new Error(`Baris #${row._row_idx}: Kolom no_invoice wajib diisi.`);
+							}
+
 							const statusKeuangan = normalizeEnumValue(
 								'status_keuangan',
 								row.status_keuangan || 'SIAP_VERIFIKASI'
 							);
-							const jenisTransaksi = normalizeEnumValue(
-								'jenis_transaksi',
-								row.jenis_transaksi || 'BIAYA_LAIN'
-							);
 
-							// 1. Insert / Upsert Header Invoice
-							const resHeader = await tx`
-								INSERT INTO keuangan_audit (
-									id_permohonan, no_invoice, total_tagihan, status_keuangan, created_by
-								) VALUES (
-									${targetPermohonanId}, ${row.no_invoice}, ${nominalUang},
-									${statusKeuangan}::status_keuangan_enum, ${currentUserId}
-								)
-								ON CONFLICT (no_invoice) DO UPDATE SET
-									total_tagihan = keuangan_audit.total_tagihan + EXCLUDED.total_tagihan,
-									updated_at = CURRENT_TIMESTAMP
-								RETURNING id_keuangan;
-							`;
+							// Mendukung format multi-baris (1 item per baris) maupun multi-item dipisah ';'
+							const jenisList = (row.jenis_transaksi || '')
+								.split(/[;|]+/)
+								.map((s) => s.trim())
+								.filter(Boolean);
+							const nominalList = (row.jumlah_uang || '')
+								.split(/[;|]+/)
+								.map((s) => parseFloat(s.trim() || '0'));
+							const ketList = (row.catatan_revisi || row.keterangan || '')
+								.split(/[;|]+/)
+								.map((s) => s.trim());
 
-							const idKeuangan = Number(resHeader[0].id_keuangan);
-							const keteranganFinal = row.catatan_revisi || row.keterangan || null;
+							const itemCount = Math.max(jenisList.length, nominalList.length);
+							const barisItems: { jenis: string; nominal: number; keterangan: string | null }[] =
+								[];
+							let subtotalBaris = 0;
 
-							// 2. Insert Item Rincian Biaya ke Detail
-							await tx`
-								INSERT INTO detail_keuangan_audit (
-									id_keuangan, jenis_transaksi, jumlah_uang, keterangan
-								) VALUES (
-									${idKeuangan}, ${jenisTransaksi}::jenis_transaksi_enum, ${nominalUang}, ${keteranganFinal}
+							for (let i = 0; i < itemCount; i++) {
+								const nominal = nominalList[i] ?? 0;
+								if (isNaN(nominal) || nominal <= 0) continue;
+
+								const jenis = normalizeEnumValue(
+									'jenis_transaksi',
+									jenisList[i] || jenisList[0] || 'BIAYA_LAIN'
 								);
-							`;
+								const ket = ketList[i] || ketList[0] || null;
+								barisItems.push({ jenis, nominal, keterangan: ket });
+								subtotalBaris += nominal;
+							}
+
+							if (barisItems.length === 0) {
+								throw new Error(`Baris #${row._row_idx}: Nominal jumlah_uang tidak valid.`);
+							}
+
+							let idKeuangan: number;
+							if (!processedInvoicesInBatch.has(noInvoice)) {
+								const resHeader = await tx`
+									INSERT INTO keuangan_audit (
+										id_permohonan, no_invoice, total_tagihan, status_keuangan, created_by
+									) VALUES (
+										${idPermohonan}, ${noInvoice}, ${subtotalBaris},
+										${statusKeuangan}::status_keuangan_enum, ${currentUserId}
+									)
+									ON CONFLICT (no_invoice) DO UPDATE SET
+										id_permohonan = EXCLUDED.id_permohonan,
+										total_tagihan = EXCLUDED.total_tagihan,
+										status_keuangan = EXCLUDED.status_keuangan,
+										updated_at = CURRENT_TIMESTAMP
+									RETURNING id_keuangan;
+								`;
+								idKeuangan = Number(resHeader[0].id_keuangan);
+								await tx`DELETE FROM detail_keuangan_audit WHERE id_keuangan = ${idKeuangan}`;
+								processedInvoicesInBatch.add(noInvoice);
+							} else {
+								const resHeader = await tx`
+									UPDATE keuangan_audit
+									SET total_tagihan = total_tagihan + ${subtotalBaris},
+									    updated_at = CURRENT_TIMESTAMP
+									WHERE no_invoice = ${noInvoice}
+									RETURNING id_keuangan;
+								`;
+								idKeuangan = Number(resHeader[0].id_keuangan);
+							}
+
+							for (const item of barisItems) {
+								await tx`
+									INSERT INTO detail_keuangan_audit (
+										id_keuangan, jenis_transaksi, jumlah_uang, keterangan
+									) VALUES (
+										${idKeuangan}, ${item.jenis}::jenis_transaksi_enum, ${item.nominal}, ${item.keterangan}
+									);
+								`;
+							}
 						}
+
 						successCount++;
 					} catch (rowErr) {
-						console.error(`Error import row #${row._row_idx} pada tabel ${targetTable}:`, rowErr);
+						console.error(`Error import row #${row._row_idx} (${targetTable}):`, rowErr);
 						failCount++;
+						errorNotes.push(
+							rowErr instanceof Error ? rowErr.message : `Baris #${row._row_idx} gagal`
+						);
 					}
 				}
 			});
 
+			const labelTahap =
+				targetTable === 'pelaku_usaha_penugasan'
+					? 'Pelaku Usaha & Penugasan'
+					: 'Keuangan & Rincian Biaya';
+
 			return {
 				success: true,
 				importedTable: targetTable,
-				message: `Impor data "${targetTable}" berhasil! ${successCount} data tersimpan di database${failCount > 0 ? `, ${failCount} gagal.` : '.'}`
+				message: `Impor "${labelTahap}" selesai! ${successCount} baris berhasil disimpan${failCount > 0 ? `, ${failCount} gagal (${errorNotes.slice(0, 2).join('; ')}).` : '.'}`
 			};
 		} catch (err) {
-			console.error('Error execute import single table:', err);
-			return fail(500, { error: `Gagal mengeksekusi impor data ${targetTable} ke database.` });
+			console.error('Error execute import:', err);
+			return fail(500, { error: 'Gagal mengeksekusi impor data ke database.' });
 		}
 	}
 } satisfies Actions;

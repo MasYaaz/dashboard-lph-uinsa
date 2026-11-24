@@ -12,7 +12,8 @@
 		Database,
 		Trash,
 		Plus,
-		ArrowRight
+		ArrowRight,
+		X
 	} from '@lucide/svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -20,7 +21,7 @@
 	const daftarPetugas = $derived(data.referensi?.petugas ?? []);
 	const daftarPermohonan = $derived(data.referensi?.permohonan ?? []);
 
-	let selectedTable = $state('pelaku_usaha');
+	let selectedTable = $state('pelaku_usaha_penugasan');
 	let selectedFiles = $state<File[]>([]);
 	let isPreviewing = $state(false);
 	let isImporting = $state(false);
@@ -47,26 +48,22 @@
 			editableRows = [];
 			selectedFiles = [];
 
-			const sequence = [
-				'pelaku_usaha',
-				'permohonan_audit',
-				'penugasan',
-				'detail_penugasan_petugas',
-				'keuangan_audit'
-			];
-			const nextIdx = sequence.indexOf(form.importedTable) + 1;
-			if (nextIdx < sequence.length) {
-				selectedTable = sequence[nextIdx];
+			// Otomatis pindah dari CSV 1 ke CSV 2 setelah berhasil disimpan
+			if (form.importedTable === 'pelaku_usaha_penugasan') {
+				selectedTable = 'keuangan_audit';
 			}
 		}
 	});
 
 	const opsiTabel = [
-		{ value: 'pelaku_usaha', label: '1. Pelaku Usaha (pelaku_usaha)' },
-		{ value: 'permohonan_audit', label: '2. Permohonan Audit (permohonan_audit)' },
-		{ value: 'penugasan', label: '3. Penugasan Tim (penugasan)' },
-		{ value: 'detail_penugasan_petugas', label: '4. Detail Petugas (detail_penugasan_petugas)' },
-		{ value: 'keuangan_audit', label: '5. Keuangan Audit (keuangan_audit)' }
+		{
+			value: 'pelaku_usaha_penugasan',
+			label: '1. Pelaku Usaha, Permohonan & Tim Penugasan (CSV 1)'
+		},
+		{
+			value: 'keuangan_audit',
+			label: '2. Keuangan Audit & Rincian Biaya (CSV 2)'
+		}
 	];
 
 	const opsiStatusPenugasan = [
@@ -105,13 +102,44 @@
 
 	function tambahBaris() {
 		const barisBaru: Record<string, string> = { _row_idx: String(editableRows.length + 2) };
+		const today = new Date().toISOString().split('T')[0];
 		editableHeaders.forEach((h) => {
 			if (h === 'status_penugasan') barisBaru[h] = 'ASSIGNED';
 			else if (h === 'status_keuangan') barisBaru[h] = 'SIAP_VERIFIKASI';
-			else if (h === 'jenis_transaksi') barisBaru[h] = 'BIAYA_LAIN';
+			else if (h === 'jenis_transaksi') barisBaru[h] = 'BIAYA_LPH';
+			else if (h === 'tanggal_permohonan' || h === 'tanggal_penugasan') barisBaru[h] = today;
 			else barisBaru[h] = '';
 		});
 		editableRows = [...editableRows, barisBaru];
+	}
+
+	// Helper Multi-Petugas (disimpan sebagai string dipisah ';', misal "1;2;4")
+	function getPetugasArray(rawVal: string | undefined): string[] {
+		if (!rawVal) return [''];
+		const list = rawVal.split(';');
+		return list.length > 0 ? list : [''];
+	}
+
+	function updatePetugasAt(rowIdx: number, header: string, petIdx: number, newVal: string) {
+		const list = getPetugasArray(editableRows[rowIdx][header]);
+		list[petIdx] = newVal;
+		editableRows[rowIdx][header] = list.join(';');
+	}
+
+	function tambahPetugasKeBaris(rowIdx: number, header: string) {
+		const list = getPetugasArray(editableRows[rowIdx][header]);
+		list.push('');
+		editableRows[rowIdx][header] = list.join(';');
+	}
+
+	function hapusPetugasDariBaris(rowIdx: number, header: string, petIdx: number) {
+		const list = getPetugasArray(editableRows[rowIdx][header]);
+		if (list.length > 1) {
+			list.splice(petIdx, 1);
+			editableRows[rowIdx][header] = list.join(';');
+		} else {
+			editableRows[rowIdx][header] = '';
+		}
 	}
 </script>
 
@@ -123,20 +151,24 @@
 	<!-- Page Header -->
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
-			<h1 class="text-2xl font-bold tracking-tight text-[#0F172A]">Migrasi Data Bertahap</h1>
+			<h1 class="text-2xl font-bold tracking-tight text-[#0F172A]">Migrasi Data (2 Berkas CSV)</h1>
 			<p class="mt-1 text-sm text-slate-500">
-				Unggah berkas CSV secara berurutan. Step 4 & Step 5 mendukung resolusi otomatis via No
-				Registrasi (id_daftar).
+				Impor cukup dalam 2 langkah: (1) Pelaku Usaha & Tim Penugasan, lalu (2) Rincian Biaya Audit
+				menggunakan <code class="font-semibold">id_daftar</code>.
 			</p>
 		</div>
 
 		<a
 			href={resolve(`/api/template-excel?table=${selectedTable}`)}
 			download={`Template_Migrasi_${selectedTable.toUpperCase()}_LPH.csv`}
-			class="inline-flex h-9 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-xs font-bold text-[#059669] transition-all hover:bg-emerald-100"
+			class="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 text-xs font-bold text-[#059669] transition-all hover:bg-emerald-100"
 		>
 			<Download class="h-4 w-4" />
-			<span>Unduh Template ({selectedTable})</span>
+			<span
+				>Unduh Template ({selectedTable === 'pelaku_usaha_penugasan'
+					? 'CSV 1: PU & Tim'
+					: 'CSV 2: Rincian Biaya'})</span
+			>
 		</a>
 	</div>
 
@@ -170,7 +202,7 @@
 		>
 			<div class="space-y-1.5">
 				<label for="target_table" class="block text-xs font-bold text-slate-700">
-					Target Tabel Saat Ini *
+					Pilih Berkas Migrasi *
 				</label>
 				<select
 					id="target_table"
@@ -187,7 +219,7 @@
 
 			<div class="space-y-1.5">
 				<label for="excel_file" class="block text-xs font-bold text-slate-700">
-					Unggah Berkas CSV ({selectedTable}) *
+					Unggah Berkas CSV *
 				</label>
 				<label
 					for="excel_file"
@@ -203,7 +235,9 @@
 						{:else}
 							<Upload class="mb-2 h-8 w-8 text-[#059669]" />
 							<p class="mb-1 text-xs font-semibold text-slate-600">
-								Klik untuk memilih berkas CSV untuk {selectedTable}
+								Klik untuk memilih berkas CSV ({selectedTable === 'pelaku_usaha_penugasan'
+									? 'Pelaku Usaha & Penugasan'
+									: 'Keuangan & Rincian Biaya'})
 							</p>
 							<p class="text-[11px] text-slate-400">Format yang didukung: CSV (Maksimal 10MB)</p>
 						{/if}
@@ -227,7 +261,7 @@
 					class="flex h-11 items-center justify-center gap-2 rounded-full bg-slate-900 px-8 text-xs font-bold text-white shadow-2xs transition-all hover:bg-slate-800 disabled:opacity-40"
 				>
 					<Table class="h-4 w-4" />
-					<span>{isPreviewing ? 'Membaca Berkas...' : `Muat Pratinjau ${selectedTable}`}</span>
+					<span>{isPreviewing ? 'Membaca Berkas...' : 'Muat Pratinjau Data'}</span>
 				</button>
 			</div>
 		</form>
@@ -241,16 +275,20 @@
 			>
 				<div>
 					<span class="text-[11px] font-bold tracking-wider text-[#059669] uppercase"
-						>Pratinjau Impor Tabel</span
+						>Pratinjau Impor Data</span
 					>
 					<h2 class="text-base font-bold text-slate-900">
-						Tabel: <code class="rounded bg-slate-100 px-2 py-0.5 text-xs text-[#2563EB]"
-							>{form.targetTable}</code
+						Berkas: <code class="rounded bg-slate-100 px-2 py-0.5 text-xs text-[#2563EB]"
+							>{form.fileName}</code
 						>
 						({editableRows.length} Baris Siap Diimpor)
 					</h2>
 					<p class="text-xs text-slate-400">
-						Periksa dan sesuaikan data di bawah ini sebelum menyimpan ke database.
+						{#if form.targetTable === 'pelaku_usaha_penugasan'}
+							Atur daftar petugas (Auditor & Dewan Syariah) per pelaku usaha sebelum menyimpan.
+						{:else}
+							Baris dengan <code>no_invoice</code> yang sama otomatis digabung menjadi satu tagihan.
+						{/if}
 					</p>
 				</div>
 
@@ -273,8 +311,16 @@
 							class="inline-flex h-11 items-center gap-2 rounded-full bg-[#059669] px-8 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#047857] disabled:opacity-40"
 						>
 							<Database class="h-4 w-4" />
-							<span>{isImporting ? 'Menyimpan...' : `Simpan ${form.targetTable} & Lanjut`}</span>
-							<ArrowRight class="h-4 w-4" />
+							<span>
+								{isImporting
+									? 'Menyimpan...'
+									: form.targetTable === 'pelaku_usaha_penugasan'
+										? 'Simpan & Lanjut ke Rincian Biaya'
+										: 'Simpan Rincian Biaya'}
+							</span>
+							{#if form.targetTable === 'pelaku_usaha_penugasan'}
+								<ArrowRight class="h-4 w-4" />
+							{/if}
 						</button>
 					</form>
 				</div>
@@ -289,15 +335,11 @@
 						>
 							<th class="px-4 py-3 text-center">#</th>
 							{#each editableHeaders as header (header)}
-								<th class="px-4 py-3">
-									{#if header === 'id_petugas'}
-										Nama Petugas (id_petugas)
-									{:else if form.targetTable === 'detail_penugasan_petugas' && (header === 'id_daftar' || header === 'id_penugasan')}
-										No. Registrasi / PU (id_daftar)
+								<th class="px-4 py-3 whitespace-nowrap">
+									{#if header === 'id_petugas' || header === 'tim_petugas'}
+										Tim Petugas (Auditor & Dewan Syariah)
 									{:else if form.targetTable === 'keuangan_audit' && (header === 'id_daftar' || header === 'id_permohonan')}
-										Permohonan / No Registrasi (id_daftar)
-									{:else if header === 'id_permohonan'}
-										Permohonan / PU (id_permohonan)
+										No. Registrasi / Pelaku Usaha
 									{:else}
 										{header}
 									{/if}
@@ -308,28 +350,64 @@
 					</thead>
 					<tbody class="divide-y divide-slate-100 text-xs font-medium text-slate-700">
 						{#each editableRows as row, rIdx (row._row_idx ?? rIdx)}
-							<tr class="hover:bg-slate-50/80">
+							<tr class="align-top hover:bg-slate-50/80">
 								<td class="px-4 py-3 text-center font-mono text-slate-400">{rIdx + 1}</td>
 								{#each editableHeaders as header (header)}
 									<td class="px-2 py-2">
-										{#if header === 'id_petugas'}
-											<!-- Dropdown Nama Petugas -->
-											<select
-												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#059669] focus:border-[#059669] focus:outline-none"
-											>
-												<option value="">-- Pilih Nama Petugas --</option>
-												{#each daftarPetugas as pet (pet.id_petugas)}
-													<option value={String(pet.id_petugas)}>
-														{pet.nama_petugas} ({pet.peran})
-													</option>
+										{#if header === 'id_petugas' || header === 'tim_petugas'}
+											<!-- Multi-Select Petugas dalam satu baris -->
+											{@const petugasIds = getPetugasArray(row[header])}
+											<div class="min-w-58.75 space-y-1.5">
+												{#each petugasIds as petId, pIdx (pIdx)}
+													<div class="flex items-center gap-1">
+														<select
+															value={petId}
+															onchange={(e) =>
+																updatePetugasAt(
+																	rIdx,
+																	header,
+																	pIdx,
+																	(e.currentTarget as HTMLSelectElement).value
+																)}
+															class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#059669] focus:border-[#059669] focus:outline-none"
+														>
+															<option value="">-- Pilih Petugas #{pIdx + 1} --</option>
+															{#each daftarPetugas as pet (pet.id_petugas)}
+																{@const strPetId = String(pet.id_petugas)}
+																{#if !petugasIds.includes(strPetId) || petId === strPetId}
+																	<option value={strPetId}>
+																		{pet.nama_petugas} ({pet.peran})
+																	</option>
+																{/if}
+															{/each}
+														</select>
+
+														{#if petugasIds.length > 1}
+															<button
+																type="button"
+																onclick={() => hapusPetugasDariBaris(rIdx, header, pIdx)}
+																class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+																title="Hapus Petugas Ini"
+															>
+																<X class="h-3 w-3" />
+															</button>
+														{/if}
+													</div>
 												{/each}
-											</select>
-										{:else if form.targetTable === 'detail_penugasan_petugas' && (header === 'id_daftar' || header === 'id_penugasan')}
-											<!-- STEP 4: Dropdown No. Registrasi PU -->
+
+												<button
+													type="button"
+													onclick={() => tambahPetugasKeBaris(rIdx, header)}
+													class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-[#059669] hover:bg-emerald-100"
+												>
+													<Plus class="h-3 w-3" />
+													<span>Tambah Petugas</span>
+												</button>
+											</div>
+										{:else if form.targetTable === 'keuangan_audit' && (header === 'id_daftar' || header === 'id_permohonan')}
 											<select
 												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#2563EB] focus:border-[#059669] focus:outline-none"
+												class="min-w-52.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#2563EB] focus:border-[#059669] focus:outline-none"
 											>
 												<option value="">-- Pilih No. Registrasi --</option>
 												{#each daftarPermohonan as perm (perm.id_permohonan)}
@@ -338,67 +416,44 @@
 													</option>
 												{/each}
 											</select>
-										{:else if form.targetTable === 'keuangan_audit' && (header === 'id_daftar' || header === 'id_permohonan')}
-											<!-- STEP 5: Dropdown Permohonan / No Registrasi -->
-											<select
-												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#2563EB] focus:border-[#059669] focus:outline-none"
-											>
-												<option value="">-- Pilih Permohonan --</option>
-												{#each daftarPermohonan as perm (perm.id_permohonan)}
-													<option value={perm.id_daftar}>
-														{perm.id_daftar} - {perm.nama_pelaku_usaha} (ID #{perm.id_permohonan})
-													</option>
-												{/each}
-											</select>
-										{:else if header === 'id_permohonan'}
-											<!-- Dropdown Permohonan Standard (Step 3) -->
-											<select
-												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-[#2563EB] focus:border-[#059669] focus:outline-none"
-											>
-												<option value="">-- Pilih Permohonan --</option>
-												{#each daftarPermohonan as perm (perm.id_permohonan)}
-													<option value={String(perm.id_permohonan)}>
-														ID #{perm.id_permohonan} - {perm.nama_pelaku_usaha} ({perm.id_daftar})
-													</option>
-												{/each}
-											</select>
 										{:else if header === 'status_penugasan'}
-											<!-- Dropdown ENUM Status Penugasan -->
 											<select
 												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
+												class="min-w-40 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
 											>
 												{#each opsiStatusPenugasan as opt (opt.value)}
 													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</select>
 										{:else if header === 'status_keuangan'}
-											<!-- Dropdown ENUM Status Keuangan -->
 											<select
 												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
+												class="min-w-40 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-amber-700 focus:border-[#059669] focus:outline-none"
 											>
 												{#each opsiStatusKeuangan as opt (opt.value)}
 													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</select>
 										{:else if header === 'jenis_transaksi'}
-											<!-- Dropdown ENUM Jenis Transaksi -->
 											<select
 												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#059669] focus:outline-none"
+												class="min-w-42.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:border-[#059669] focus:outline-none"
 											>
 												{#each opsiJenisTransaksi as opt (opt.value)}
 													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</select>
+										{:else if header === 'tanggal_permohonan' || header === 'tanggal_penugasan'}
+											<input
+												type="date"
+												bind:value={row[header]}
+												class="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-[#059669] focus:outline-none"
+											/>
 										{:else}
 											<input
 												type="text"
 												bind:value={row[header]}
-												class="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-[#059669] focus:outline-none"
+												class="min-w-32.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-900 focus:border-[#059669] focus:outline-none"
 											/>
 										{/if}
 									</td>

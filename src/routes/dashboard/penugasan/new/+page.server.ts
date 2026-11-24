@@ -81,13 +81,12 @@ export const actions = {
 	tugaskan: async ({ request, cookies, locals }) => {
 		const formData = await request.formData();
 		const id_daftar = formData.get('id_daftar')?.toString().trim();
+		const tanggal_penugasan = formData.get('tanggal_penugasan')?.toString().trim();
 
-		// Mengambil seluruh id_petugas auditor dan dewan syariah yang dikirim dari form dinamis
 		const auditorIds = formData
 			.getAll('id_auditor')
 			.map((id) => id.toString().trim())
 			.filter(Boolean);
-
 		const dewanSyariahIds = formData
 			.getAll('id_dewan_syariah')
 			.map((id) => id.toString().trim())
@@ -96,6 +95,9 @@ export const actions = {
 		// Validasi kelengkapan data dasar
 		if (!id_daftar) {
 			return fail(400, { error: 'Pilih Permohonan Audit target terlebih dahulu.' });
+		}
+		if (!tanggal_penugasan) {
+			return fail(400, { error: 'Tanggal penugasan wajib diisi.' });
 		}
 		if (auditorIds.length === 0) {
 			return fail(400, { error: 'Minimal 1 orang Auditor harus dipilih.' });
@@ -130,10 +132,14 @@ export const actions = {
 				const idPermohonan = permohonan[0].id_permohonan;
 				const totalAuditorCount = auditorIds.length;
 
-				// 1. Insert ke tabel penugasan
+				// 1. Insert ke tabel penugasan beserta tanggal_penugasan
 				const resPenugasan = await tx`
-					INSERT INTO penugasan (id_permohonan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by)
-					VALUES (${idPermohonan}, ${totalAuditorCount}, 'ASSIGNED', ${currentUserId})
+					INSERT INTO penugasan (
+						id_permohonan, tanggal_penugasan, kebutuhan_jumlah_auditor, status_penugasan, assigned_by
+					)
+					VALUES (
+						${idPermohonan}, ${tanggal_penugasan}, ${totalAuditorCount}, 'ASSIGNED', ${currentUserId}
+					)
 					RETURNING id_penugasan
 				`;
 
@@ -162,7 +168,6 @@ export const actions = {
 			});
 		}
 
-		// Redirect langsung ke daftar riwayat penugasan setelah berhasil
 		throw redirect(303, '/dashboard/penugasan');
 	}
 } satisfies Actions;

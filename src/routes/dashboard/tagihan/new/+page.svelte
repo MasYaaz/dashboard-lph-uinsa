@@ -136,22 +136,32 @@
 				<!-- Selection Permohonan -->
 				<div class="space-y-1.5">
 					<label for="id_daftar" class="block text-xs font-semibold text-slate-700">
-						Permohonan Audit Target *
+						Pelaku Usaha / Permohonan Target *
 					</label>
 					<select
 						id="id_daftar"
 						name="id_daftar"
 						bind:value={selectedIdDaftar}
+						disabled={permohonanSiapTagih.length === 0}
 						required
-						class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:bg-white focus:outline-none"
+						class="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-xs font-semibold text-slate-900 focus:border-[#059669] focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 					>
-						<option value="" disabled>-- Pilih Permohonan Audit --</option>
+						<option value="" disabled>
+							{permohonanSiapTagih.length === 0
+								? '-- Semua pelaku usaha sudah memiliki invoice --'
+								: '-- Pilih Pelaku Usaha --'}
+						</option>
 						{#each permohonanSiapTagih as item (item.id_permohonan)}
 							<option value={item.id_daftar}>
 								{item.id_daftar} - {item.nama_pu}
 							</option>
 						{/each}
 					</select>
+					{#if permohonanSiapTagih.length === 0}
+						<p class="text-[11px] font-medium text-amber-600">
+							Tidak ada pelaku usaha baru yang menunggu penerbitan invoice.
+						</p>
+					{/if}
 				</div>
 
 				<!-- No Invoice -->
