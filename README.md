@@ -144,6 +144,54 @@ Jangan gunakan kredensial contoh ini di lingkungan produksi.
 
 Perhitungan jarak memakai Photon atau Nominatim untuk pencarian lokasi, lalu OSRM untuk rute jalan. Fitur ini memerlukan koneksi internet.
 
+### Tabel dan kolom yang digunakan per halaman
+
+Daftar ini mencakup kolom `SELECT`, kunci/filter, serta kolom `INSERT` dan `UPDATE` yang digunakan handler. Setiap route `/dashboard/*` juga membaca `users.id_user`, `nama_lengkap`, `username`, `role`, dan `is_active` melalui layout dashboard.
+
+| Route | Tabel dan kolom yang digunakan |
+| --- | --- |
+| `/` | Tidak mengakses tabel database. |
+| `/login` | `users`: `id_user`, `nama_lengkap`, `username`, `password_hash`, `role`, `is_active`, `last_login`. |
+| `/dashboard` | `pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`, `tanggal_permohonan`.<br>`penugasan`: `id_penugasan`, `id_permohonan`, `kebutuhan_jumlah_auditor`, `status_penugasan`.<br>`keuangan_audit`: `id_keuangan`, `id_permohonan`, `no_invoice`, `total_tagihan`, `status_keuangan`, `created_at`.<br>`detail_penugasan_petugas`: `id_penugasan`, `id_petugas`.<br>`petugas_field`: `id_petugas`, `nama_petugas`, `peran`.<br>`detail_keuangan_audit`: `id_detail_keuangan`, `id_keuangan`. |
+| `/dashboard/pelaku-usaha` | `pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`, `created_at`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`.<br>`keuangan_audit`, `penugasan`: `id_permohonan` untuk penghapusan data terkait. |
+| `/dashboard/pelaku-usaha/new` | `pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`, `created_by`.<br>`permohonan_audit`: `id_daftar`. |
+| `/dashboard/pelaku-usaha/[id]/edit` | `pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`, `updated_at`. |
+| `/dashboard/penugasan` | `penugasan`: `id_penugasan`, `id_permohonan`, `tanggal_penugasan`, `status_penugasan`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`.<br>`detail_penugasan_petugas`: `id_penugasan`, `id_petugas`.<br>`petugas_field`: `id_petugas`, `nama_petugas`, `peran`. |
+| `/dashboard/penugasan/new` | `permohonan_audit`: `id_permohonan`, `id_daftar`, `tanggal_permohonan`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`.<br>`penugasan`: `id_penugasan`, `id_permohonan`, `tanggal_penugasan`, `kebutuhan_jumlah_auditor`, `status_penugasan`, `assigned_by`.<br>`petugas_field`: `id_petugas`, `nama_petugas`, `peran`, `kontak`, `is_active`, `created_at`.<br>`detail_penugasan_petugas`: `id_penugasan`, `id_petugas`. |
+| `/dashboard/penugasan/[id]/edit` | `penugasan`: `id_penugasan`, `id_permohonan`, `tanggal_penugasan`, `kebutuhan_jumlah_auditor`, `updated_at`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`, `tanggal_permohonan`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`.<br>`detail_penugasan_petugas`: `id_penugasan`, `id_petugas`.<br>`petugas_field`: `id_petugas`, `nama_petugas`, `peran`, `kontak`, `is_active`, `created_at`. |
+| `/dashboard/petugas` | `petugas_field`: `id_petugas`, `nama_petugas`, `peran`, `kontak`, `is_active`, `created_at`. |
+| `/dashboard/petugas/tambah` | `petugas_field`: `nama_petugas`, `peran`, `kontak`, `is_active`. |
+| `/dashboard/petugas/[id]/edit` | `petugas_field`: `id_petugas`, `nama_petugas`, `peran`, `kontak`, `is_active`. |
+| `/dashboard/tagihan` | `keuangan_audit`: `id_keuangan`, `id_permohonan`, `no_invoice`, `total_tagihan`, `status_keuangan`, `verified_by`, `updated_at`, `created_at`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`.<br>`detail_keuangan_audit`: `id_detail_keuangan`, `id_keuangan`, `jenis_transaksi`, `keterangan`, `jumlah_uang`, `created_at`. |
+| `/dashboard/tagihan/new` | `permohonan_audit`: `id_permohonan`, `id_daftar`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`.<br>`keuangan_audit`: `id_keuangan`, `id_permohonan`, `no_invoice`, `total_tagihan`, `status_keuangan`, `created_by`.<br>`detail_keuangan_audit`: `id_keuangan`, `jenis_transaksi`, `jumlah_uang`, `keterangan`. |
+| `/dashboard/tagihan/[id]/edit` | `keuangan_audit`: `id_keuangan`, `id_permohonan`, `no_invoice`, `status_keuangan`, `total_tagihan`, `updated_at`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`.<br>`detail_keuangan_audit`: `id_detail_keuangan`, `id_keuangan`, `jenis_transaksi`, `jumlah_uang`, `keterangan`. |
+| `/dashboard/migrasi` | `petugas_field`: `id_petugas`, `nama_petugas`, `peran`.<br>`permohonan_audit`: `id_permohonan`, `id_daftar`, `tanggal_permohonan`.<br>`pelaku_usaha`: `id_daftar`, `nama_pelaku_usaha`, `jumlah_produk`, `jumlah_outlet`, `alamat_outlet`, `jarak_dari_pusat_kota`, `kontak_penyelia`, `created_by`, `updated_at`.<br>`penugasan`: `id_penugasan`, `id_permohonan`, `tanggal_penugasan`, `kebutuhan_jumlah_auditor`, `status_penugasan`, `assigned_by`, `updated_at`.<br>`detail_penugasan_petugas`: `id_penugasan`, `id_petugas`.<br>`keuangan_audit`: `id_keuangan`, `id_permohonan`, `no_invoice`, `total_tagihan`, `status_keuangan`, `created_by`, `updated_at`.<br>`detail_keuangan_audit`: `id_keuangan`, `jenis_transaksi`, `jumlah_uang`, `keterangan`. |
+| `/api/template-excel`, `/api/hitung-jarak`, `/api/logout` | Tidak mengakses tabel database. |
+
+Penghapusan pelaku usaha atau invoice juga dapat menghapus data detail melalui aturan `ON DELETE CASCADE` di database.
+
+### Kolom pada setiap tabel
+
+Daftar berikut mengikuti skema yang dibuat oleh `scripts/migrate.ts`. Penanda `PK` berarti primary key, sedangkan `FK` berarti foreign key.
+
+| Tabel | Kolom |
+| --- | --- |
+| `users` | `id_user` SERIAL (PK), `nama_lengkap` VARCHAR(150), `username` VARCHAR(50), `password_hash` VARCHAR(255), `role` role_login_enum, `is_active` BOOLEAN, `last_login` TIMESTAMP, `created_at` TIMESTAMP, `updated_at` TIMESTAMP |
+| `petugas_field` | `id_petugas` SERIAL (PK), `nama_petugas` VARCHAR(150), `kontak` VARCHAR(50), `peran` VARCHAR(50), `is_active` BOOLEAN, `created_at` TIMESTAMP |
+| `pelaku_usaha` | `id_daftar` VARCHAR(50) (PK), `nama_pelaku_usaha` VARCHAR(255), `jumlah_produk` INT, `jumlah_outlet` INT, `alamat_outlet` TEXT, `jarak_dari_pusat_kota` NUMERIC(8,2), `kontak_penyelia` VARCHAR(30), `created_by` INT (FK ke `users.id_user`), `created_at` TIMESTAMP, `updated_at` TIMESTAMP |
+| `permohonan_audit` | `id_permohonan` SERIAL (PK), `id_daftar` VARCHAR(50) (FK ke `pelaku_usaha.id_daftar`), `tanggal_permohonan` DATE, `created_at` TIMESTAMP |
+| `penugasan` | `id_penugasan` SERIAL (PK), `id_permohonan` INT (FK ke `permohonan_audit.id_permohonan`), `tanggal_penugasan` DATE, `kebutuhan_jumlah_auditor` INT, `status_penugasan` status_penugasan_enum, `assigned_by` INT (FK ke `users.id_user`), `created_at` TIMESTAMP, `updated_at` TIMESTAMP |
+| `detail_penugasan_petugas` | `id_detail` SERIAL (PK), `id_penugasan` INT (FK ke `penugasan.id_penugasan`), `id_petugas` INT (FK ke `petugas_field.id_petugas`) |
+| `keuangan_audit` | `id_keuangan` SERIAL (PK), `id_permohonan` INT (FK ke `permohonan_audit.id_permohonan`), `no_invoice` VARCHAR(100), `total_tagihan` NUMERIC(12,2), `status_keuangan` status_keuangan_enum, `catatan_revisi` TEXT, `created_by` INT (FK ke `users.id_user`), `verified_by` INT (FK ke `users.id_user`), `created_at` TIMESTAMP, `updated_at` TIMESTAMP |
+| `detail_keuangan_audit` | `id_detail_keuangan` SERIAL (PK), `id_keuangan` INT (FK ke `keuangan_audit.id_keuangan`), `jenis_transaksi` jenis_transaksi_enum, `keterangan` VARCHAR(255), `jumlah_uang` NUMERIC(12,2), `created_at` TIMESTAMP |
+
+Nilai enum yang digunakan:
+
+- `role_login_enum`: `ADMINISTRASI`, `BENDAHARA`
+- `status_penugasan_enum`: `PENDING`, `ASSIGNED`, `REASSIGNED`
+- `status_keuangan_enum`: `DRAFT`, `SIAP_VERIFIKASI`, `DITERIMA`, `REVISI`
+- `jenis_transaksi_enum`: `TRANSPORT_TALANGAN`, `UH_PENGINAPAN`, `BIAYA_LPH`, `INPUT_SISTEM`, `TENTATIVE_LAPANGAN`, `TAGIHAN_FINAL`, `BIAYA_LAIN`
+
 ## Struktur proyek
 
 ```text
